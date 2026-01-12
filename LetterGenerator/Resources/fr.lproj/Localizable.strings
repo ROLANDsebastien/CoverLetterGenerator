@@ -1,0 +1,34 @@
+/* 
+  Localizable.strings
+  LetterGenerator
+*/
+
+"app_title" = "Générateur de Lettre de Motivation IA";
+"app_subtitle" = "Natif Apple Silicon • Propulsé par CLI";
+
+"section_context" = "1. Contexte";
+"section_job_description" = "2. Description du Poste";
+"section_options" = "3. Options";
+"section_signature" = "4. Signature (Optionnel)";
+"section_generated_letter" = "Lettre Générée";
+
+"placeholder_drag_drop" = "Glissez-déposez votre CV PDF ici";
+"status_loaded" = "✓ Chargé";
+"label_ai_model" = "Modèle IA";
+"placeholder_custom_instructions" = "Instructions personnalisées (Ton, Focus...)";
+"placeholder_full_name" = "Nom complet";
+"placeholder_phone" = "Téléphone";
+"placeholder_email" = "Email";
+
+"button_generate" = "Générer la Lettre";
+"button_export_pdf" = "Exporter en PDF";
+"button_ok" = "OK";
+
+"alert_export_success_title" = "Export Réussi";
+"alert_export_success_message" = "Votre lettre de motivation a été enregistrée avec succès.";
+"alert_drop_error_title" = "Erreur de Fichier";
+"drop_error_only_pdf" = "Seuls les fichiers PDF sont supportés";
+
+"header_gemini" = "Gemini (CLI)";
+"header_opencode" = "OpenCode (Local)";
+"header_mistral" = "Mistral (Vibe)";

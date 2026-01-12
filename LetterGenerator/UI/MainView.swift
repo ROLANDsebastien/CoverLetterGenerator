@@ -1,0 +1,300 @@
+import SwiftUI
+import UniformTypeIdentifiers
+
+struct MainView: View {
+    @StateObject private var viewModel = MainViewModel()
+    
+    // User Personal Info (Stored in AppStorage)
+    @AppStorage("userName") private var userName: String = ""
+    @AppStorage("userPhone") private var userPhone: String = ""
+    @AppStorage("userEmail") private var userEmail: String = ""
+    
+    // UI State for Dragging (View-specific)
+    @State private var isDraggingOver: Bool = false
+    @State private var isSignatureExpanded: Bool = true
+
+    var body: some View {
+        VStack(spacing: 20) {
+            HeaderView()
+
+            HStack(spacing: 20) {
+                // Input Section
+                VStack(alignment: .leading, spacing: 15) {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 15) {
+                            // 1. Context
+                            Text(I18n.t("section_context"))
+                                .font(.headline)
+                            
+                            DropZoneView(
+                                fileName: viewModel.cvFileName,
+                                isLoaded: !viewModel.cvText.isEmpty,
+                                isDraggingOver: $isDraggingOver,
+                                onDrop: { providers in
+                                    viewModel.handleDrop(providers: providers) { name, phone, email in
+                                        var foundAny = false
+                                        if let name = name { self.userName = name; foundAny = true }
+                                        if let phone = phone { self.userPhone = phone; foundAny = true }
+                                        if let email = email { self.userEmail = email; foundAny = true }
+                                        
+                                        // Auto-collapse if data detected
+                                        if foundAny {
+                                            withAnimation {
+                                                isSignatureExpanded = false
+                                            }
+                                        }
+                                    }
+                                }
+                            )
+
+                            // 2. Job Description
+                            Text(I18n.t("section_job_description"))
+                                .font(.headline)
+                            TextEditor(text: $viewModel.jobDescription)
+                                .frame(height: 150)
+                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.2)))
+
+                            // 3. Options
+                            Text(I18n.t("section_options"))
+                                .font(.headline)
+                            
+                            ModelPicker(selection: $viewModel.selectedModel)
+                            
+                            TextField(I18n.t("placeholder_custom_instructions"), text: $viewModel.customInstructions)
+                                .textFieldStyle(.roundedBorder)
+                            
+                            // 4. Signature (Collapsible)
+                            DisclosureGroup(isExpanded: $isSignatureExpanded) {
+                                SignatureFields(name: $userName, phone: $userPhone, email: $userEmail)
+                            } label: {
+                                HStack {
+                                    Text(I18n.t("section_signature"))
+                                        .font(.headline)
+                                        .foregroundStyle(.primary)
+                                    Spacer()
+                                    if !userName.isEmpty || !userPhone.isEmpty || !userEmail.isEmpty {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.green)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.trailing, 5)
+                    }
+
+                    GenerateButton(
+                        isGenerating: viewModel.isGenerating,
+                        isDisabled: viewModel.isGenerating || viewModel.jobDescription.isEmpty || viewModel.cvText.isEmpty,
+                        action: {
+                            viewModel.generateLetter(userName: userName, userPhone: userPhone, userEmail: userEmail)
+                        }
+                    )
+                }
+                .frame(width: 350)
+
+                Divider()
+
+                // Output Section
+                OutputView(
+                    text: $viewModel.generatedLetter,
+                    onExport: viewModel.prepareExport
+                )
+            }
+        }
+        .padding(30)
+        .frame(minWidth: 850, minHeight: 650)
+        .fileExporter(
+            isPresented: $viewModel.isExporting,
+            document: viewModel.documentToExport,
+            contentType: .pdf,
+            defaultFilename: viewModel.exportFileName
+        ) { result in
+            switch result {
+            case .success(let url):
+                print("Saved to \(url)")
+                viewModel.showingExportSuccess = true
+            case .failure(let error):
+                print("Export failed: \(error.localizedDescription)")
+            }
+        }
+        .alert(I18n.t("alert_export_success_title"), isPresented: $viewModel.showingExportSuccess) {
+            Button(I18n.t("button_ok"), role: .cancel) { }
+        } message: {
+            Text(I18n.t("alert_export_success_message"))
+        }
+        .alert(I18n.t("alert_drop_error_title"), isPresented: $viewModel.showDropError) {
+            Button(I18n.t("button_ok"), role: .cancel) { }
+        } message: {
+            Text(viewModel.dropErrorMessage)
+        }
+    }
+}
+
+// MARK: - Subviews
+
+struct HeaderView: View {
+    var body: some View {
+        HStack {
+            Text(I18n.t("app_title"))
+                .font(.largeTitle.bold())
+            Spacer()
+            Text(I18n.t("app_subtitle"))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.bottom)
+    }
+}
+
+struct DropZoneView: View {
+    let fileName: String
+    let isLoaded: Bool
+    @Binding var isDraggingOver: Bool
+    let onDrop: ([NSItemProvider]) -> Bool
+    
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(isDraggingOver ? Color.accentColor : Color.secondary.opacity(0.3), style: StrokeStyle(lineWidth: 2, dash: [5]))
+                .background(isDraggingOver ? Color.accentColor.opacity(0.1) : Color.secondary.opacity(0.05))
+                .animation(.easeInOut(duration: 0.2), value: isDraggingOver)
+            
+            VStack(spacing: 10) {
+                Image(systemName: isDraggingOver ? "arrow.down.doc" : "doc.text.fill")
+                    .font(.system(size: 30))
+                    .foregroundStyle(isDraggingOver ? Color.accentColor : Color.secondary)
+                Text(fileName.isEmpty ? I18n.t("placeholder_drag_drop") : fileName)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+                    .foregroundStyle(isDraggingOver ? Color.accentColor : Color.primary)
+                    .font(.headline)
+                    .lineLimit(3)
+                    .minimumScaleFactor(0.7)
+                if isLoaded {
+                    Text(I18n.t("status_loaded"))
+                        .font(.caption)
+                        .foregroundStyle(.green)
+                }
+            }
+        }
+        .frame(height: 120)
+        .onDrop(of: [.fileURL], isTargeted: $isDraggingOver) { providers in
+            return onDrop(providers)
+        }
+    }
+}
+
+struct ModelPicker: View {
+    @Binding var selection: AIService.AIModel
+    
+    var body: some View {
+        Picker(I18n.t("label_ai_model"), selection: $selection) {
+            Section(I18n.t("header_gemini")) {
+                ForEach(AIService.AIModel.allCases.filter { $0.provider == "gemini" }, id: \.self) { model in
+                    Text(model.displayName).tag(model)
+                }
+            }
+            Section(I18n.t("header_opencode")) {
+                ForEach(AIService.AIModel.allCases.filter { $0.provider == "opencode" }, id: \.self) { model in
+                    Text(model.displayName).tag(model)
+                }
+            }
+            Section(I18n.t("header_mistral")) {
+                ForEach(AIService.AIModel.allCases.filter { $0.provider == "mistral" }, id: \.self) { model in
+                    Text(model.displayName).tag(model)
+                }
+            }
+        }
+    }
+}
+
+struct SignatureFields: View {
+    @Binding var name: String
+    @Binding var phone: String
+    @Binding var email: String
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            TextField(I18n.t("placeholder_full_name"), text: $name)
+                .textFieldStyle(.roundedBorder)
+            TextField(I18n.t("placeholder_phone"), text: $phone)
+                .textFieldStyle(.roundedBorder)
+            TextField(I18n.t("placeholder_email"), text: $email)
+                .textFieldStyle(.roundedBorder)
+        }
+    }
+}
+
+struct GenerateButton: View {
+    let isGenerating: Bool
+    let isDisabled: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            if isGenerating {
+                ProgressView().controlSize(.small).padding(.horizontal)
+            } else {
+                Text(I18n.t("button_generate"))
+                    .bold()
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .buttonStyle(.borderedProminent)
+        .disabled(isDisabled)
+    }
+}
+
+struct OutputView: View {
+    @Binding var text: String
+    let onExport: () -> Void
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 15) {
+            HStack {
+                Text(I18n.t("section_generated_letter"))
+                    .font(.headline)
+                Spacer()
+                if !text.isEmpty {
+                    Button(I18n.t("button_export_pdf"), action: onExport)
+                        .buttonStyle(.bordered)
+                }
+            }
+
+            TextEditor(text: $text)
+                .font(.system(.body, design: .serif))
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.2)))
+        }
+    }
+}
+
+// Keeping the wrapper here or move to separate file? Keeping here for now as it's small.
+struct PDFDocumentWrapper: FileDocument {
+    static var readableContentTypes: [UTType] { [.pdf] }
+    
+    var text: String
+    
+    init(text: String) {
+        self.text = text
+    }
+    
+    init(configuration: ReadConfiguration) throws {
+        self.text = ""
+    }
+    
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("temp.pdf")
+        if PDFService.generatePDF(from: text, to: tempURL) {
+            let data = try Data(contentsOf: tempURL)
+            return FileWrapper(regularFileWithContents: data)
+        } else {
+            throw CocoaError(.fileWriteUnknown)
+        }
+    }
+}
+
+struct MainView_Previews: PreviewProvider {
+    static var previews: some View {
+        MainView()
+    }
+}
