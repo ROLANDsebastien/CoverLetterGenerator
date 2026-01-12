@@ -63,5 +63,4 @@ Carthage/Build
 # Executables
 LetterGenerator/LetterGenerator.app
 LetterGenerator.zip
-release.yml
 build_output.log
