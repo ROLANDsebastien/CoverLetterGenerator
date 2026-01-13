@@ -11,7 +11,6 @@ struct MainView: View {
     
     // UI State for Dragging (View-specific)
     @State private var isDraggingOver: Bool = false
-    @State private var isSignatureExpanded: Bool = true
 
     var body: some View {
         VStack(spacing: 20) {
@@ -32,17 +31,9 @@ struct MainView: View {
                                 isDraggingOver: $isDraggingOver,
                                 onDrop: { providers in
                                     viewModel.handleDrop(providers: providers) { name, phone, email in
-                                        var foundAny = false
-                                        if let name = name { self.userName = name; foundAny = true }
-                                        if let phone = phone { self.userPhone = phone; foundAny = true }
-                                        if let email = email { self.userEmail = email; foundAny = true }
-                                        
-                                        // Auto-collapse if data detected
-                                        if foundAny {
-                                            withAnimation {
-                                                isSignatureExpanded = false
-                                            }
-                                        }
+                                        if let name = name { self.userName = name }
+                                        if let phone = phone { self.userPhone = phone }
+                                        if let email = email { self.userEmail = email }
                                     }
                                 }
                             )
@@ -62,22 +53,6 @@ struct MainView: View {
                             
                             TextField(I18n.t("placeholder_custom_instructions"), text: $viewModel.customInstructions)
                                 .textFieldStyle(.roundedBorder)
-                            
-                            // 4. Signature (Collapsible)
-                            DisclosureGroup(isExpanded: $isSignatureExpanded) {
-                                SignatureFields(name: $userName, phone: $userPhone, email: $userEmail)
-                            } label: {
-                                HStack {
-                                    Text(I18n.t("section_signature"))
-                                        .font(.headline)
-                                        .foregroundStyle(.primary)
-                                    Spacer()
-                                    if !userName.isEmpty || !userPhone.isEmpty || !userEmail.isEmpty {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .foregroundColor(.green)
-                                    }
-                                }
-                            }
                         }
                         .padding(.trailing, 5)
                     }
@@ -134,15 +109,10 @@ struct MainView: View {
 
 struct HeaderView: View {
     var body: some View {
-        HStack {
-            Text(I18n.t("app_title"))
-                .font(.largeTitle.bold())
-            Spacer()
-            Text(I18n.t("app_subtitle"))
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-        .padding(.bottom)
+        Text(I18n.t("app_title"))
+            .font(.largeTitle.bold())
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.bottom)
     }
 }
 
@@ -204,23 +174,6 @@ struct ModelPicker: View {
                     Text(model.displayName).tag(model)
                 }
             }
-        }
-    }
-}
-
-struct SignatureFields: View {
-    @Binding var name: String
-    @Binding var phone: String
-    @Binding var email: String
-    
-    var body: some View {
-        VStack(spacing: 8) {
-            TextField(I18n.t("placeholder_full_name"), text: $name)
-                .textFieldStyle(.roundedBorder)
-            TextField(I18n.t("placeholder_phone"), text: $phone)
-                .textFieldStyle(.roundedBorder)
-            TextField(I18n.t("placeholder_email"), text: $email)
-                .textFieldStyle(.roundedBorder)
         }
     }
 }

@@ -15,11 +15,9 @@ struct I18n {
     
     private static let en = [
         "app_title": "AI Cover Letter Generator",
-        "app_subtitle": "Native Apple Silicon • CLI Powered",
         "section_context": "1. Context",
         "section_job_description": "2. Job Description",
         "section_options": "3. Options",
-        "section_signature": "4. Signature (Optional)",
         "section_generated_letter": "Generated Letter",
         "placeholder_drag_drop": "Drag & Drop your CV PDF here",
         "status_loaded": "✓ Loaded",
@@ -42,11 +40,9 @@ struct I18n {
     
     private static let fr = [
         "app_title": "Générateur de Lettre de Motivation IA",
-        "app_subtitle": "Natif Apple Silicon • Propulsé par CLI",
         "section_context": "1. Contexte",
         "section_job_description": "2. Description du Poste",
         "section_options": "3. Options",
-        "section_signature": "4. Signature (Optionnel)",
         "section_generated_letter": "Lettre Générée",
         "placeholder_drag_drop": "Glissez-déposez votre CV PDF ici",
         "status_loaded": "✓ Chargé",

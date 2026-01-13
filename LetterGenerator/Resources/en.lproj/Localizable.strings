@@ -4,7 +4,6 @@
 */
 
 "app_title" = "AI Cover Letter Generator";
-"app_subtitle" = "Native Apple Silicon • CLI Powered";
 
 "section_context" = "1. Context";
 "section_job_description" = "2. Job Description";
