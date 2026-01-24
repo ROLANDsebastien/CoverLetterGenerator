@@ -49,7 +49,7 @@ struct MainView: View {
                             Text(I18n.t("section_options"))
                                 .font(.headline)
                             
-                            ModelPicker(selection: $viewModel.selectedModel)
+                            ModelPicker(selection: $viewModel.selectedModel, availableModels: viewModel.availableModels)
                             
                             TextField(I18n.t("placeholder_custom_instructions"), text: $viewModel.customInstructions)
                                 .textFieldStyle(.roundedBorder)
@@ -101,6 +101,11 @@ struct MainView: View {
             Button(I18n.t("button_ok"), role: .cancel) { }
         } message: {
             Text(viewModel.dropErrorMessage)
+        }
+        .alert("AI Error", isPresented: $viewModel.showError) {
+             Button("OK", role: .cancel) { }
+        } message: {
+             Text(viewModel.errorMessage)
         }
     }
 }
@@ -155,23 +160,48 @@ struct DropZoneView: View {
 }
 
 struct ModelPicker: View {
-    @Binding var selection: AIService.AIModel
+    @Binding var selection: AIService.AIModelInfo
+    var availableModels: [AIService.AIModelInfo]
     
     var body: some View {
         Picker(I18n.t("label_ai_model"), selection: $selection) {
-            Section(I18n.t("header_gemini")) {
-                ForEach(AIService.AIModel.allCases.filter { $0.provider == "gemini" }, id: \.self) { model in
-                    Text(model.displayName).tag(model)
+            // Section for Gemini
+            let geminiModels = availableModels.filter { $0.provider == "gemini" }
+            if !geminiModels.isEmpty {
+                Section(I18n.t("header_gemini")) {
+                    ForEach(geminiModels) { model in
+                        Text(model.displayName).tag(model)
+                    }
                 }
             }
-            Section(I18n.t("header_opencode")) {
-                ForEach(AIService.AIModel.allCases.filter { $0.provider == "opencode" }, id: \.self) { model in
-                    Text(model.displayName).tag(model)
+            
+            // Section for OpenCode
+            let openCodeModels = availableModels.filter { $0.provider == "opencode" }
+            if !openCodeModels.isEmpty {
+                Section(I18n.t("header_opencode")) {
+                    ForEach(openCodeModels) { model in
+                        Text(model.displayName).tag(model)
+                    }
                 }
             }
-            Section(I18n.t("header_mistral")) {
-                ForEach(AIService.AIModel.allCases.filter { $0.provider == "mistral" }, id: \.self) { model in
-                    Text(model.displayName).tag(model)
+            
+            // Section for Mistral
+            let mistralModels = availableModels.filter { $0.provider == "mistral" }
+            if !mistralModels.isEmpty {
+                Section(I18n.t("header_mistral")) {
+                    ForEach(mistralModels) { model in
+                        Text(model.displayName).tag(model)
+                    }
+                }
+            }
+            
+            // Section for others if any
+            let otherModels = availableModels.filter { $0.provider != "gemini" && $0.provider != "opencode" && $0.provider != "mistral" }
+            if !otherModels.isEmpty {
+                Section("Other") {
+                    ForEach(otherModels) { model in
+                        Text(model.displayName).tag(model)
+                    }
                 }
             }
         }
@@ -185,16 +215,25 @@ struct GenerateButton: View {
     
     var body: some View {
         Button(action: action) {
-            if isGenerating {
-                ProgressView().controlSize(.small).padding(.horizontal)
-            } else {
+            ZStack {
                 Text(I18n.t("button_generate"))
-                    .bold()
-                    .frame(maxWidth: .infinity)
+                    .font(.title3.bold())
+                    .opacity(isGenerating ? 0 : 1)
+                    .scaleEffect(isGenerating ? 0.9 : 1.0)
+                
+                if isGenerating {
+                    ProgressView()
+                        .controlSize(.regular)
+                        .tint(.white) // In borderedProminent, text is usually white
+                        .transition(.opacity.combined(with: .scale(scale: 0.5)))
+                }
             }
+            .frame(maxWidth: .infinity)
+            .frame(height: 55)
         }
         .buttonStyle(.borderedProminent)
         .disabled(isDisabled)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isGenerating)
     }
 }
 

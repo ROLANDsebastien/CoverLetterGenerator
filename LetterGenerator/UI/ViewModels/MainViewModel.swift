@@ -76,24 +76,40 @@ class MainViewModel: ObservableObject {
     @Published var customInstructions: String = ""
     @Published var cvText: String = ""
     @Published var cvFileName: String = ""
-    @Published var selectedModel: AIService.AIModel = .gemini3Flash
+    // We default to the first discovered model or a placeholder (will be updated on load)
+    @Published var selectedModel: AIService.AIModelInfo = AIService.AIModelInfo(id: "loading", modelName: "loading", displayName: "Loading...", provider: "gemini", executablePath: "")
+    @Published var availableModels: [AIService.AIModelInfo] = []
     
     // MARK: - Output State
     @Published var generatedLetter: String = ""
     @Published var isGenerating: Bool = false
     @Published var showingExportSuccess: Bool = false
+    
+    // MARK: - Error Handling State
     @Published var showDropError: Bool = false
     @Published var dropErrorMessage: String = ""
+    @Published var showError: Bool = false
+    @Published var errorMessage: String = ""
     
     // MARK: - Export State
     @Published var isExporting: Bool = false
     @Published var documentToExport: PDFDocumentWrapper? = nil
     @Published var exportFileName: String = "Cover_Letter"
     
-    // MARK: - User Preferences
-    // We use AppStorage in the View, but we can sync or access them here if needed. 
-    // For MVVM purity, we'll pass these values in when needed, or bind them in the View.
-    // However, to keep the logic here, we will accept them as parameters in methods.
+    init() {
+        // Load models on init
+        Task {
+            await loadModels()
+        }
+    }
+    
+    func loadModels() async {
+        let models = await AIService.fetchAvailableModels()
+        self.availableModels = models
+        if let first = models.first {
+            self.selectedModel = first
+        }
+    }
     
     // MARK: - Actions
     
@@ -164,8 +180,10 @@ class MainViewModel: ObservableObject {
             model: selectedModel
         ) { result in
             self.isGenerating = false
-            if let result = result {
-                var finalLetter = result.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            switch result {
+            case .success(let output):
+                var finalLetter = output.trimmingCharacters(in: .whitespacesAndNewlines)
                 
                 // Append only contact details (AI provides the closing "Sincerely,"/"Cordialement,")
                 if !userName.isEmpty || !userPhone.isEmpty || !userEmail.isEmpty {
@@ -175,6 +193,10 @@ class MainViewModel: ObservableObject {
                     if !userEmail.isEmpty { finalLetter += "\(userEmail)" }
                 }
                 self.generatedLetter = finalLetter
+                
+            case .failure(let error):
+                self.errorMessage = error.localizedDescription
+                self.showError = true
             }
         }
     }
