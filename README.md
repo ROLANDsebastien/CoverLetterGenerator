@@ -3,34 +3,44 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Platform: macOS](https://img.shields.io/badge/Platform-macOS-lightgrey.svg)](https://www.apple.com/macos/)
 
-A native macOS application (Apple Silicon optimized) that generates professional cover letters using AI models running locally or via CLI. It automatically extracts context from your CV (PDF) and analyzes the job description to write a tailored letter.
+A modern, native macOS application designed to simplify your job application process. It leverages AI models (running locally or via CLI) to generate tailored, professional cover letters by analyzing your CV and the specific job description.
+
+## Key Features 🚀
+
+### 🧠 Smart Generation
+*   **Context-Aware AI:** Analyzes both your uploaded CV and the Job Description to create highly relevant content.
+*   **Auto-Language Detection:** Automatically writes the letter in the same language as the job ad (English 🇬🇧 or French 🇫🇷).
+*   **Tone Selection:** Choose from **Professional**, **Enthusiastic**, **Confident**, or **Academic** tones.
+
+### 👤 Profile Management (New!)
+*   **Multiple Personas:** Create and save different profiles (e.g., "Fullstack Dev", "Project Manager", "Freelance").
+*   **Instant Switching:** Switch between profiles in one click to auto-fill your contact details and custom instructions.
+
+### 🎨 PDF Export & Theming
+*   **Multiple Themes:** Choose from **Standard** (Clean), **Modern** (Blue Accents, Avenir font), or **Classic** (Times New Roman).
+*   **Live Preview:** See exactly how your PDF will look before exporting.
+*   **One-Click Export:** Generate professional, formatted PDFs instantly.
+
+### 🛠 Tools & Utilities
+*   **CV Text Inspector:** View and edit exactly what the AI text extractor "sees" in your PDF to ensure accuracy.
+*   **History:** Automatically saves your generated letters. Restore previous versions anytime.
+*   **Direct Copy:** Copy the text to your clipboard for quick emails or LinkedIn messages.
 
 ---
 
-## 🇬🇧 English
+## 🛠 Prerequisites
 
-### Features
-*   **Drag & Drop:** Simply drop your CV (PDF) to extract text and contact details automatically.
-*   **Auto-Language Detection:** Writes the letter in the same language as the job description (English or French).
-*   **Smart Signature:** Automatically appends your contact details and a professional closing matching the language.
-*   **Multiple AI Providers:** Supports Google Gemini (via CLI) and local models via OpenCode.
-*   **PDF Export:** Export formatted, justified PDFs with a single click.
+To use this application, you need **at least one** of the following AI backends installed on your Mac:
 
-### Prerequisites
-
-To use this application, you need **at least one** of the following CLI tools installed on your Mac. You can install them via Homebrew.
-
-**Option 1: Gemini CLI (Recommended for speed/quality)**
+**Option 1: Google Gemini (Recommended)**
 ```bash
 brew install gemini-cli
-# You will need to configure your API key:
-# gemini configure
+# Run 'gemini configure' to set your API key
 ```
 
-**Option 2: OpenCode (For local models)**
+**Option 2: OpenCode (Local Models)**
 ```bash
 brew install opencode
-# Ensure you have models downloaded or configured
 ```
 
 **Option 3: Mistral Vibe**
@@ -38,63 +48,38 @@ brew install opencode
 brew install mistral-vibe
 ```
 
-### Installation
-
-1.  Download the latest release from the [Releases](https://github.com/yourusername/LetterGenerator/releases) page.
-2.  Unzip `LetterGenerator.zip`.
-3.  Move `LetterGenerator.app` to your **Applications** folder.
-4.  **First Launch:** Right-click the app and select **Open**. (This is required because the app is signed with an ad-hoc certificate).
-
-### Usage
-1.  **Drop your CV:** Drag your PDF CV into the drop zone. The app will auto-fill your name, phone, and email.
-2.  **Paste Job Description:** Copy and paste the job text.
-3.  **Select Model:** Choose your preferred AI model from the list.
-4.  **Generate:** Click "Generate Letter".
-5.  **Export:** Edit if needed, then export as PDF.
-
 ---
 
 ## 🇫🇷 Français
 
-### Fonctionnalités
-*   **Glisser-Déposer :** Déposez simplement votre CV (PDF) pour extraire le texte et vos coordonnées automatiquement.
-*   **Détection de Langue Auto :** Rédige la lettre dans la même langue que l'annonce (Anglais ou Français).
-*   **Signature Intelligente :** Ajoute automatiquement vos coordonnées et une formule de politesse adaptée à la langue.
-*   **Multi-Modèles IA :** Supporte Google Gemini (via CLI) et des modèles locaux via OpenCode.
-*   **Export PDF :** Exportez des PDF formatés et justifiés en un clic.
+Une application macOS native moderne conçue pour simplifier vos candidatures. Elle utilise l'IA pour générer des lettres de motivation sur-mesure en analysant votre CV et l'offre d'emploi.
 
-### Prérequis
+## Fonctionnalités Clés 🚀
 
-Pour utiliser cette application, vous devez avoir installé **au moins l'un** des outils CLI suivants sur votre Mac. Vous pouvez les installer via Homebrew.
+### 🧠 Génération Intelligente
+*   **Analyse Contextuelle :** Croise les données de votre CV avec l'offre d'emploi.
+*   **Détection de Langue :** Rédige automatiquement en Français ou Anglais selon l'offre.
+*   **Choix du Ton :** Professionnel, Enthousiaste, Confiant ou Académique.
 
-**Option 1 : Gemini CLI (Recommandé pour la vitesse/qualité)**
-```bash
-brew install gemini-cli
-# Vous devrez configurer votre clé API :
-# gemini configure
-```
+### 👤 Gestion de Profils (Nouveau !)
+*   **Multi-Profils :** Créez des identités différentes (ex: "Dev Senior", "Freelance").
+*   **Bascule Rapide :** Changez de profil en un clic pour charger vos coordonnées et instructions spécifiques.
 
-**Option 2 : OpenCode (Pour les modèles locaux)**
-```bash
-brew install opencode
-# Assurez-vous d'avoir téléchargé ou configuré vos modèles
-```
+### 🎨 Thèmes & Export PDF
+*   **Thèmes Variés :** **Standard** (Épuré), **Moderne** (Accents Bleus), ou **Classique** (Institutionnel).
+*   **Aperçu en Direct :** Visualisez le rendu final avant l'export.
+*   **Export PDF :** Un fichier prêt à envoyer en un clic.
 
-**Option 3 : Mistral Vibe**
-```bash
-brew install mistral-vibe
-```
+### 🛠 Outils Pratiques
+*   **Inspecteur de CV :** Vérifiez et corrigez le texte extrait de votre PDF pour garantir que l'IA a les bonnes infos.
+*   **Historique :** Sauvegarde automatique de vos lettres.
+*   **Copie Rapide :** Copiez le texte pour un email ou LinkedIn.
 
-### Installation
+## Installation
 
-1.  Téléchargez la dernière version depuis la page [Releases](https://github.com/yourusername/LetterGenerator/releases).
-2.  Décompressez `LetterGenerator.zip`.
-3.  Déplacez `LetterGenerator.app` dans votre dossier **Applications**.
-4.  **Premier Lancement :** Faites un clic-droit sur l'application et sélectionnez **Ouvrir**. (Ceci est nécessaire car l'application est signée avec un certificat ad-hoc).
+1.  Téléchargez la dernière version depuis la page Releases.
+2.  Déplacez `LetterGenerator.app` dans votre dossier **Applications**.
+3.  Lancez l'application (Clic-droit > Ouvrir au premier lancement).
 
-### Utilisation
-1.  **Déposez votre CV :** Glissez votre CV PDF dans la zone dédiée. L'app remplira automatiquement votre nom, téléphone et email.
-2.  **Collez l'Annonce :** Copiez et collez le texte de l'offre d'emploi.
-3.  **Choisissez le Modèle :** Sélectionnez votre modèle IA préféré dans la liste.
-4.  **Générez :** Cliquez sur "Générer la Lettre".
-5.  **Exportez :** Éditez si nécessaire, puis exportez en PDF.
+---
+*Built with ❤️ using SwiftUI & Apple Intelligence tools.*

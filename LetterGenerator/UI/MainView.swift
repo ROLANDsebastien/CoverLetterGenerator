@@ -4,80 +4,183 @@ import UniformTypeIdentifiers
 struct MainView: View {
     @StateObject private var viewModel = MainViewModel()
     
-    // User Personal Info (Stored in AppStorage)
-    @AppStorage("userName") private var userName: String = ""
-    @AppStorage("userPhone") private var userPhone: String = ""
-    @AppStorage("userEmail") private var userEmail: String = ""
-    
-    // UI State for Dragging (View-specific)
+    // UI State
     @State private var isDraggingOver: Bool = false
+    @State private var showingCVReview: Bool = false
+    @State private var newProfileName: String = ""
+    @State private var showingSaveProfileAlert: Bool = false
 
     var body: some View {
-        VStack(spacing: 20) {
-            HeaderView()
-
-            HStack(spacing: 20) {
-                // Input Section
-                VStack(alignment: .leading, spacing: 15) {
-                    ScrollView {
+        HStack(spacing: 0) {
+            // MARK: - Left Panel (Controls)
+            VStack(spacing: 0) {
+                // Header with History Toggle
+                HeaderView(showHistory: $viewModel.showHistory)
+                    .padding(.bottom, 10)
+                
+                // --- PROFILE SELECTOR ---
+                HStack(spacing: 8) {
+                    Image(systemName: "person.circle")
+                        .foregroundColor(.secondary)
+                    
+                    Picker("", selection: $viewModel.selectedProfile) {
+                        Text(I18n.t("label_load_profile")).tag(nil as UserProfile?)
+                        ForEach(viewModel.profiles) { profile in
+                            Text(profile.profileName).tag(profile as UserProfile?)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(maxWidth: .infinity)
+                    .onChange(of: viewModel.selectedProfile) { newValue in
+                        if let profile = newValue {
+                            viewModel.loadProfile(profile)
+                        }
+                    }
+                    
+                    // Save Profile Button
+                    Button(action: {
+                        newProfileName = viewModel.selectedProfile?.profileName ?? ""
+                        showingSaveProfileAlert = true
+                    }) {
+                        Image(systemName: "square.and.arrow.down")
+                    }
+                    .buttonStyle(.borderless)
+                    .help(I18n.t("button_save_profile"))
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 15)
+                
+                Divider()
+                
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 25) {
+                        
+                        // 1. Profile & CV Section
                         VStack(alignment: .leading, spacing: 15) {
-                            // 1. Context
-                            Text(I18n.t("section_context"))
-                                .font(.headline)
+                            SectionHeader(title: I18n.t("section_context"), icon: "person.text.rectangle")
                             
+                            // Drop Zone
                             DropZoneView(
                                 fileName: viewModel.cvFileName,
                                 isLoaded: !viewModel.cvText.isEmpty,
                                 isDraggingOver: $isDraggingOver,
                                 onDrop: { providers in
-                                    viewModel.handleDrop(providers: providers) { name, phone, email in
-                                        if let name = name { self.userName = name }
-                                        if let phone = phone { self.userPhone = phone }
-                                        if let email = email { self.userEmail = email }
-                                    }
+                                    viewModel.handleDrop(providers: providers) { _, _, _ in }
+                                },
+                                onReview: {
+                                    showingCVReview = true
                                 }
                             )
-
-                            // 2. Job Description
-                            Text(I18n.t("section_job_description"))
-                                .font(.headline)
-                            TextEditor(text: $viewModel.jobDescription)
-                                .frame(height: 150)
-                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.2)))
-
-                            // 3. Options
-                            Text(I18n.t("section_options"))
-                                .font(.headline)
                             
-                            ModelPicker(selection: $viewModel.selectedModel, availableModels: viewModel.availableModels)
+                            // Personal Details Form (Bound to ViewModel directly now)
+                            VStack(spacing: 12) {
+                                InputField(icon: "person", placeholder: I18n.t("placeholder_full_name"), text: $viewModel.userName)
+                                InputField(icon: "phone", placeholder: I18n.t("placeholder_phone"), text: $viewModel.userPhone)
+                                InputField(icon: "envelope", placeholder: I18n.t("placeholder_email"), text: $viewModel.userEmail)
+                            }
+                            .padding(15)
+                            .background(Color(nsColor: .controlBackgroundColor))
+                            .cornerRadius(10)
+                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.primary.opacity(0.05), lineWidth: 1))
+                        }
+
+                        // 2. Job Description Section
+                        VStack(alignment: .leading, spacing: 15) {
+                            SectionHeader(title: I18n.t("section_job_description"), icon: "briefcase")
+                            
+                            TextEditor(text: $viewModel.jobDescription)
+                                .font(.body)
+                                .frame(height: 120)
+                                .padding(8)
+                                .background(Color(nsColor: .controlBackgroundColor))
+                                .cornerRadius(10)
+                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.primary.opacity(0.05), lineWidth: 1))
+                        }
+
+                        // 3. AI Options & Tone
+                        VStack(alignment: .leading, spacing: 15) {
+                            SectionHeader(title: I18n.t("section_options"), icon: "gearshape.2")
+                            
+                            // Model Picker
+                            Picker(I18n.t("label_ai_model"), selection: $viewModel.selectedModel) {
+                                ForEach(viewModel.availableModels) { model in
+                                    Text(model.displayName).tag(model)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .padding(4)
+                            .background(Color(nsColor: .controlBackgroundColor))
+                            .cornerRadius(8)
+                            
+                            // Tone Picker
+                            Picker(I18n.t("label_tone"), selection: $viewModel.selectedTone) {
+                                ForEach(LetterTone.allCases) { tone in
+                                    Text(tone.displayName).tag(tone)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .padding(4)
+                            .background(Color(nsColor: .controlBackgroundColor))
+                            .cornerRadius(8)
+                            
+                            // Theme Picker
+                            Picker(I18n.t("label_theme"), selection: $viewModel.selectedTheme) {
+                                ForEach(PDFTheme.allCases) { theme in
+                                    Text(theme.displayName).tag(theme)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .padding(4)
+                            .background(Color(nsColor: .controlBackgroundColor))
+                            .cornerRadius(8)
                             
                             TextField(I18n.t("placeholder_custom_instructions"), text: $viewModel.customInstructions)
-                                .textFieldStyle(.roundedBorder)
+                                .textFieldStyle(.plain)
+                                .padding(10)
+                                .background(Color(nsColor: .controlBackgroundColor))
+                                .cornerRadius(8)
+                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.05), lineWidth: 1))
                         }
-                        .padding(.trailing, 5)
                     }
-
-                    GenerateButton(
-                        isGenerating: viewModel.isGenerating,
-                        isDisabled: viewModel.isGenerating || viewModel.jobDescription.isEmpty || viewModel.cvText.isEmpty,
-                        action: {
-                            viewModel.generateLetter(userName: userName, userPhone: userPhone, userEmail: userEmail)
-                        }
-                    )
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
                 }
-                .frame(width: 350)
-
+                
+                // Footer: Generate Button (Enhanced Status)
                 Divider()
+                    .padding(.top, 10)
+                
+                GenerateButton(
+                    isGenerating: viewModel.isGenerating,
+                    currentStep: viewModel.currentStep,
+                    isDisabled: viewModel.isGenerating || viewModel.jobDescription.isEmpty || viewModel.cvText.isEmpty,
+                    action: {
+                        viewModel.generateLetter(userName: viewModel.userName, userPhone: viewModel.userPhone, userEmail: viewModel.userEmail)
+                    }
+                )
+                .padding(20)
+            }
+            .frame(width: 380)
+            .background(Color(nsColor: .windowBackgroundColor))
+            .zIndex(1)
 
-                // Output Section
+            // MARK: - Right Panel (Preview)
+            ZStack {
+                Color(nsColor: .underPageBackgroundColor)
+                    .ignoresSafeArea()
+                
                 OutputView(
                     text: $viewModel.generatedLetter,
+                    userName: viewModel.userName,
+                    userPhone: viewModel.userPhone,
+                    userEmail: viewModel.userEmail,
+                    selectedTheme: viewModel.selectedTheme,
                     onExport: viewModel.prepareExport
                 )
+                .padding(40)
             }
         }
-        .padding(30)
-        .frame(minWidth: 850, minHeight: 650)
+        .frame(minWidth: 900, minHeight: 700)
         .fileExporter(
             isPresented: $viewModel.isExporting,
             document: viewModel.documentToExport,
@@ -97,186 +200,416 @@ struct MainView: View {
         } message: {
             Text(I18n.t("alert_export_success_message"))
         }
-        .alert(I18n.t("alert_drop_error_title"), isPresented: $viewModel.showDropError) {
-            Button(I18n.t("button_ok"), role: .cancel) { }
-        } message: {
-            Text(viewModel.dropErrorMessage)
+        .sheet(isPresented: $showingCVReview) {
+            CVReviewSheet(cvText: $viewModel.cvText)
         }
-        .alert("AI Error", isPresented: $viewModel.showError) {
-             Button("OK", role: .cancel) { }
-        } message: {
-             Text(viewModel.errorMessage)
+        .sheet(isPresented: $viewModel.showHistory) {
+            HistoryView(viewModel: viewModel)
         }
+        // SAVE PROFILE ALERT
+        .alert(I18n.t("alert_save_profile_title"), isPresented: $showingSaveProfileAlert, actions: {
+            TextField(I18n.t("placeholder_profile_name"), text: $newProfileName)
+            Button(I18n.t("button_ok")) {
+                if !newProfileName.isEmpty {
+                    viewModel.saveProfile(name: newProfileName)
+                }
+            }
+            Button("Cancel", role: .cancel) { }
+        })
     }
 }
 
-// MARK: - Subviews
-
-struct HeaderView: View {
+// MARK: - CV Review Sheet
+struct CVReviewSheet: View {
+    @Binding var cvText: String
+    @Environment(\.presentationMode) var presentationMode
+    
     var body: some View {
-        Text(I18n.t("app_title"))
-            .font(.largeTitle.bold())
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.bottom)
+        VStack(spacing: 0) {
+            HStack {
+                Text("Vérification du contenu du CV")
+                    .font(.headline)
+                Spacer()
+                Button("OK") { presentationMode.wrappedValue.dismiss() }
+                    .buttonStyle(.borderedProminent)
+            }
+            .padding()
+            .background(Color(nsColor: .controlBackgroundColor))
+            
+            Divider()
+            
+            TextEditor(text: $cvText)
+                .font(.system(size: 13, design: .monospaced))
+                .padding()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(width: 600, height: 500)
     }
 }
 
+// MARK: - Subviews Update
 struct DropZoneView: View {
     let fileName: String
     let isLoaded: Bool
     @Binding var isDraggingOver: Bool
     let onDrop: ([NSItemProvider]) -> Bool
+    let onReview: () -> Void 
     
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(isDraggingOver ? Color.accentColor : Color.secondary.opacity(0.3), style: StrokeStyle(lineWidth: 2, dash: [5]))
-                .background(isDraggingOver ? Color.accentColor.opacity(0.1) : Color.secondary.opacity(0.05))
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(isDraggingOver ? Color.accentColor : Color.secondary.opacity(0.2), style: StrokeStyle(lineWidth: 1.5, dash: [4]))
+                .background(isDraggingOver ? Color.accentColor.opacity(0.05) : Color.clear)
                 .animation(.easeInOut(duration: 0.2), value: isDraggingOver)
             
-            VStack(spacing: 10) {
-                Image(systemName: isDraggingOver ? "arrow.down.doc" : "doc.text.fill")
-                    .font(.system(size: 30))
-                    .foregroundStyle(isDraggingOver ? Color.accentColor : Color.secondary)
-                Text(fileName.isEmpty ? I18n.t("placeholder_drag_drop") : fileName)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-                    .foregroundStyle(isDraggingOver ? Color.accentColor : Color.primary)
-                    .font(.headline)
-                    .lineLimit(3)
-                    .minimumScaleFactor(0.7)
-                if isLoaded {
-                    Text(I18n.t("status_loaded"))
-                        .font(.caption)
-                        .foregroundStyle(.green)
+            HStack(spacing: 15) {
+                ZStack {
+                    Circle()
+                        .fill(isLoaded ? Color.green.opacity(0.1) : Color.blue.opacity(0.1))
+                        .frame(width: 40, height: 40)
+                    
+                    Image(systemName: isLoaded ? "checkmark" : (isDraggingOver ? "arrow.down" : "doc.text"))
+                        .foregroundStyle(isLoaded ? .green : .blue)
+                }
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(fileName.isEmpty ? I18n.t("placeholder_drag_drop") : fileName)
+                        .font(.system(size: 14, weight: .medium))
+                        .lineLimit(1)
+                    
+                    if isLoaded {
+                        Button(action: onReview) {
+                            Text("Voir/Modifier le texte")
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                                .underline()
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        Text("PDF format")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
             }
+            .padding(10)
         }
-        .frame(height: 120)
+        .frame(height: 70)
         .onDrop(of: [.fileURL], isTargeted: $isDraggingOver) { providers in
             return onDrop(providers)
         }
     }
 }
 
-struct ModelPicker: View {
-    @Binding var selection: AIService.AIModelInfo
-    var availableModels: [AIService.AIModelInfo]
-    
+// Keep HistoryView, HeaderView, SectionHeader, InputField, GenerateButton as is...
+struct HeaderView: View {
+    @Binding var showHistory: Bool 
     var body: some View {
-        Picker(I18n.t("label_ai_model"), selection: $selection) {
-            // Section for Gemini
-            let geminiModels = availableModels.filter { $0.provider == "gemini" }
-            if !geminiModels.isEmpty {
-                Section(I18n.t("header_gemini")) {
-                    ForEach(geminiModels) { model in
-                        Text(model.displayName).tag(model)
-                    }
-                }
+        HStack {
+            Image(systemName: "doc.text.image.fill")
+                .font(.title2)
+                .foregroundStyle(LinearGradient(colors: [.blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing))
+            Text(I18n.t("app_title"))
+                .font(.system(size: 18, weight: .semibold, design: .rounded))
+            Spacer()
+            Button(action: { showHistory = true }) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.secondary)
             }
-            
-            // Section for OpenCode
-            let openCodeModels = availableModels.filter { $0.provider == "opencode" }
-            if !openCodeModels.isEmpty {
-                Section(I18n.t("header_opencode")) {
-                    ForEach(openCodeModels) { model in
-                        Text(model.displayName).tag(model)
-                    }
-                }
-            }
-            
-            // Section for Mistral
-            let mistralModels = availableModels.filter { $0.provider == "mistral" }
-            if !mistralModels.isEmpty {
-                Section(I18n.t("header_mistral")) {
-                    ForEach(mistralModels) { model in
-                        Text(model.displayName).tag(model)
-                    }
-                }
-            }
-            
-            // Section for others if any
-            let otherModels = availableModels.filter { $0.provider != "gemini" && $0.provider != "opencode" && $0.provider != "mistral" }
-            if !otherModels.isEmpty {
-                Section("Other") {
-                    ForEach(otherModels) { model in
-                        Text(model.displayName).tag(model)
-                    }
-                }
-            }
+            .buttonStyle(.plain)
+            .help(I18n.t("history_title"))
+        }
+        .padding(.top, 20)
+        .padding(.horizontal, 20)
+    }
+}
+
+struct SectionHeader: View {
+    let title: String
+    let icon: String
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .foregroundColor(.secondary)
+            Text(title)
+                .font(.headline)
+                .foregroundColor(.primary)
+        }
+    }
+}
+
+struct InputField: View {
+    let icon: String
+    let placeholder: String
+    @Binding var text: String
+    var body: some View {
+        HStack {
+            Image(systemName: icon)
+                .frame(width: 20)
+                .foregroundColor(.secondary)
+            TextField(placeholder, text: $text)
+                .textFieldStyle(.plain)
         }
     }
 }
 
 struct GenerateButton: View {
     let isGenerating: Bool
+    let currentStep: GenerationStep
     let isDisabled: Bool
     let action: () -> Void
-    
     var body: some View {
         Button(action: action) {
             ZStack {
-                Text(I18n.t("button_generate"))
-                    .font(.title3.bold())
-                    .opacity(isGenerating ? 0 : 1)
-                    .scaleEffect(isGenerating ? 0.9 : 1.0)
-                
-                if isGenerating {
-                    ProgressView()
-                        .controlSize(.regular)
-                        .tint(.white) // In borderedProminent, text is usually white
-                        .transition(.opacity.combined(with: .scale(scale: 0.5)))
+                LinearGradient(
+                    colors: isDisabled ? [Color.gray.opacity(0.3), Color.gray.opacity(0.3)] : [Color.blue, Color.purple],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .opacity(isDisabled ? 0.3 : 1.0)
+                HStack(spacing: 10) {
+                    if isGenerating {
+                        ProgressView().controlSize(.small).colorInvert().brightness(10)
+                        Text(currentStep.rawValue).font(.system(size: 14, weight: .medium)).transition(.opacity)
+                    } else {
+                        Image(systemName: "sparkles").font(.system(size: 16, weight: .bold))
+                        Text(I18n.t("button_generate")).font(.system(size: 16, weight: .bold))
+                    }
                 }
+                .foregroundColor(.white)
+                .animation(.smooth, value: currentStep)
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 55)
+            .frame(height: 50)
+            .cornerRadius(12)
+            .shadow(color: isDisabled ? .clear : .blue.opacity(0.3), radius: 5, x: 0, y: 3)
         }
-        .buttonStyle(.borderedProminent)
+        .buttonStyle(.plain)
         .disabled(isDisabled)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isGenerating)
+    }
+}
+
+struct HistoryView: View {
+    @ObservedObject var viewModel: MainViewModel
+    private let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = I18n.t("history_date_format")
+        return formatter
+    }()
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text(I18n.t("history_title")).font(.headline)
+                Spacer()
+                Button("Fermer") { viewModel.showHistory = false }.buttonStyle(.borderless)
+            }
+            .padding().background(Color(nsColor: .controlBackgroundColor))
+            Divider()
+            if viewModel.history.isEmpty {
+                VStack(spacing: 15) {
+                    Image(systemName: "clock").font(.system(size: 40)).foregroundColor(.secondary)
+                    Text(I18n.t("history_empty")).foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List {
+                    ForEach(viewModel.history) { item in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(item.title).font(.system(size: 14, weight: .semibold)).lineLimit(1)
+                                Text(dateFormatter.string(from: item.date)).font(.caption).foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Button(I18n.t("history_load")) { viewModel.restoreHistoryItem(item) }
+                            .buttonStyle(.borderedProminent).controlSize(.small)
+                        }
+                        .padding(.vertical, 4)
+                        .contextMenu {
+                            Button("Delete", role: .destructive) {
+                                if let index = viewModel.history.firstIndex(of: item) {
+                                    viewModel.deleteHistoryItem(at: IndexSet(integer: index))
+                                }
+                            }
+                        }
+                    }
+                    .onDelete { indexSet in viewModel.deleteHistoryItem(at: indexSet) }
+                }
+                .listStyle(.inset)
+            }
+        }
+        .frame(width: 400, height: 500)
     }
 }
 
 struct OutputView: View {
     @Binding var text: String
+    var userName: String
+    var userPhone: String
+    var userEmail: String
+    var selectedTheme: PDFTheme 
+    
     let onExport: () -> Void
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 15) {
-            HStack {
-                Text(I18n.t("section_generated_letter"))
-                    .font(.headline)
-                Spacer()
+        VStack(spacing: 20) {
+            // Paper View
+            ZStack(alignment: .topTrailing) {
+                // Background
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color.white)
+                    .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
+                
+                // Content
+                VStack(alignment: .leading, spacing: 0) {
+                    
+                    // --- THEME-AWARE HEADER ---
+                    VStack(spacing: 8) {
+                        if !userName.isEmpty {
+                            Text(userName)
+                                .font(fontForName(theme: selectedTheme))
+                                .foregroundColor(colorForName(theme: selectedTheme))
+                        }
+                        
+                        let contactLine = [userPhone, userEmail].filter { !$0.isEmpty }.joined(separator: "  •  ")
+                        if !contactLine.isEmpty {
+                            Text(contactLine)
+                                .font(fontForContact(theme: selectedTheme))
+                                .foregroundColor(colorForContact(theme: selectedTheme))
+                        }
+                        
+                        DividerView(theme: selectedTheme, color: colorForName(theme: selectedTheme))
+                            .padding(.top, 5)
+                    }
+                    .padding(.top, 40)
+                    .padding(.horizontal, 40)
+                    
+                    // --- BODY ---
+                    TextEditor(text: $text)
+                        .font(fontForBody(theme: selectedTheme))
+                        .lineSpacing(4)
+                        .foregroundColor(Color.black)
+                        .padding(.horizontal, 36)
+                        .padding(.top, 10)
+                        .scrollContentBackground(.hidden)
+                        .frame(maxHeight: .infinity)
+                }
+                
+                // Buttons
                 if !text.isEmpty {
-                    Button(I18n.t("button_export_pdf"), action: onExport)
-                        .buttonStyle(.bordered)
+                    HStack(spacing: 8) {
+                        Button(action: {
+                            let pasteboard = NSPasteboard.general
+                            pasteboard.clearContents()
+                            pasteboard.setString(text, forType: .string)
+                        }) {
+                            Image(systemName: "doc.on.doc")
+                                .font(.system(size: 14, weight: .bold))
+                                .padding(8)
+                                .background(Color.blue.opacity(0.1))
+                                .cornerRadius(8)
+                        }
+                        .buttonStyle(.plain)
+                        .help(I18n.t("button_copy"))
+                        
+                        Button(action: onExport) {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.system(size: 14, weight: .bold))
+                                .padding(8)
+                                .background(Color.blue.opacity(0.1))
+                                .cornerRadius(8)
+                        }
+                        .buttonStyle(.plain)
+                        .help(I18n.t("button_export_pdf"))
+                    }
+                    .padding(16)
                 }
             }
-
-            TextEditor(text: $text)
-                .font(.system(.body, design: .serif))
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.2)))
+            .frame(maxWidth: 650)
+            .aspectRatio(1 / 1.414, contentMode: .fit)
+        }
+    }
+    
+    // Theme Helpers
+    func fontForName(theme: PDFTheme) -> Font {
+        switch theme {
+        case .standard: return .custom("Helvetica-Bold", size: 18)
+        case .modern: return .custom("Avenir-Heavy", size: 22) // Heavier
+        case .classic: return .custom("Times-Bold", size: 20)
+        }
+    }
+    
+    func colorForName(theme: PDFTheme) -> Color {
+        switch theme {
+        case .standard, .classic: return .black
+        case .modern: return Color(red: 0.0, green: 0.3, blue: 0.6) // Yale Blue
+        }
+    }
+    
+    func fontForContact(theme: PDFTheme) -> Font {
+        switch theme {
+        case .standard: return .custom("Helvetica", size: 10)
+        case .modern: return .custom("Avenir-Medium", size: 9)
+        case .classic: return .custom("Times-Roman", size: 11)
+        }
+    }
+    
+    func colorForContact(theme: PDFTheme) -> Color {
+        switch theme {
+        case .standard: return .gray
+        case .modern: return Color(red: 0.2, green: 0.4, blue: 0.7)
+        case .classic: return .gray
+        }
+    }
+    
+    func fontForBody(theme: PDFTheme) -> Font {
+        switch theme {
+        case .standard: return .custom("Helvetica Neue", size: 11)
+        case .modern: return .custom("Avenir-Book", size: 10)
+        case .classic: return .custom("Times-Roman", size: 11)
         }
     }
 }
 
-// Keeping the wrapper here or move to separate file? Keeping here for now as it's small.
+struct DividerView: View {
+    let theme: PDFTheme
+    let color: Color
+    
+    var body: some View {
+        switch theme {
+        case .standard:
+            Divider()
+        case .modern:
+            Rectangle()
+                .fill(color)
+                .frame(height: 2)
+        case .classic:
+            EmptyView()
+        }
+    }
+}
+
 struct PDFDocumentWrapper: FileDocument {
     static var readableContentTypes: [UTType] { [.pdf] }
     
     var text: String
+    var userDetails: (name: String, phone: String, email: String)
+    var theme: PDFTheme
     
-    init(text: String) {
+    init(text: String, userDetails: (name: String, phone: String, email: String) = ("", "", ""), theme: PDFTheme = .standard) {
         self.text = text
+        self.userDetails = userDetails
+        self.theme = theme
     }
     
     init(configuration: ReadConfiguration) throws {
         self.text = ""
+        self.userDetails = ("", "", "")
+        self.theme = .standard
     }
     
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("temp.pdf")
-        if PDFService.generatePDF(from: text, to: tempURL) {
+        if PDFService.generatePDF(from: text, userDetails: userDetails, theme: theme, to: tempURL) {
             let data = try Data(contentsOf: tempURL)
             return FileWrapper(regularFileWithContents: data)
         } else {
@@ -286,7 +619,5 @@ struct PDFDocumentWrapper: FileDocument {
 }
 
 struct MainView_Previews: PreviewProvider {
-    static var previews: some View {
-        MainView()
-    }
+    static var previews: some View { MainView() }
 }
