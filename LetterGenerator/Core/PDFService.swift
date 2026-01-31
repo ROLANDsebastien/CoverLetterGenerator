@@ -58,25 +58,22 @@ class PDFService {
         return (name, phone, email)
     }
     
-    /// Generate a PDF with a styled header based on the selected theme
+    /// Generate a PDF with a styled header based on the selected theme, supporting multiple pages.
     static func generatePDF(from text: String, userDetails: (name: String, phone: String, email: String), theme: PDFTheme, to outputURL: URL) -> Bool {
         // A4 Size
         let pageWidth: CGFloat = 595.2
         let pageHeight: CGFloat = 841.8
-        let margin: CGFloat = 72.0 // 1 inch
+        let margin: CGFloat = 40.0 // Compact margin
         
         let pdfData = NSMutableData()
+        var mediaBox = CGRect(x: 0, y: 0, width: pageWidth, height: pageHeight)
         
         guard let consumer = CGDataConsumer(data: pdfData as CFMutableData),
-              let context = CGContext(consumer: consumer, mediaBox: nil, nil) else {
+              let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil) else {
             return false
         }
         
-        let mediaBox = CGRect(x: 0, y: 0, width: pageWidth, height: pageHeight)
-        
-        context.beginPDFPage(nil)
-        
-        // --- 1. SETUP STYLES BASED ON THEME ---
+        // --- PREPARE STYLES ---
         var nameFont: NSFont
         var contactFont: NSFont
         var bodyFont: NSFont
@@ -88,7 +85,7 @@ class PDFService {
         case .standard:
             nameFont = NSFont(name: "Helvetica-Bold", size: 18) ?? NSFont.boldSystemFont(ofSize: 18)
             contactFont = NSFont(name: "Helvetica", size: 10) ?? NSFont.systemFont(ofSize: 10)
-            bodyFont = NSFont(name: "Helvetica", size: 10.5) ?? NSFont.systemFont(ofSize: 10.5)
+            bodyFont = NSFont(name: "Helvetica", size: 11.0) ?? NSFont.systemFont(ofSize: 11.0) 
             nameColor = .black
             accentColor = .gray
             separatorStyle = 0
@@ -96,7 +93,7 @@ class PDFService {
         case .modern:
             nameFont = NSFont(name: "Avenir-Heavy", size: 22) ?? NSFont.boldSystemFont(ofSize: 22)
             contactFont = NSFont(name: "Avenir-Medium", size: 9) ?? NSFont.systemFont(ofSize: 9)
-            bodyFont = NSFont(name: "Avenir-Book", size: 10) ?? NSFont.systemFont(ofSize: 10)
+            bodyFont = NSFont(name: "Avenir-Book", size: 10.5) ?? NSFont.systemFont(ofSize: 10.5)
             nameColor = NSColor(red: 0.0, green: 0.3, blue: 0.6, alpha: 1.0) // Yale Blue
             accentColor = NSColor(red: 0.2, green: 0.4, blue: 0.7, alpha: 1.0)
             separatorStyle = 2
@@ -104,77 +101,19 @@ class PDFService {
         case .classic:
             nameFont = NSFont(name: "Times-Bold", size: 20) ?? NSFont.boldSystemFont(ofSize: 20)
             contactFont = NSFont(name: "Times-Roman", size: 11) ?? NSFont.systemFont(ofSize: 11)
-            bodyFont = NSFont(name: "Times-Roman", size: 11) ?? NSFont.systemFont(ofSize: 11)
+            bodyFont = NSFont(name: "Times-Roman", size: 11.0) ?? NSFont.systemFont(ofSize: 11.0)
             nameColor = .black
             accentColor = .darkGray
             separatorStyle = 0
         }
         
-        // --- 2. DRAW HEADER ---
-        let headerStartY = pageHeight - margin
-        var currentY = headerStartY
-        
-        if !userDetails.name.isEmpty {
-            let nameAttrs: [NSAttributedString.Key: Any] = [.font: nameFont, .foregroundColor: nameColor]
-            let nameString = NSAttributedString(string: userDetails.name, attributes: nameAttrs)
-            
-            // Center for classic, Left for others? Let's keep Left for now as standard.
-            // Actually Classic looks better centered usually, but let's stick to consistent left layout for simplicity unless requested.
-            
-            let nameRect = CGRect(x: margin, y: currentY - 30, width: pageWidth - (2 * margin), height: 35)
-            let framesetter = CTFramesetterCreateWithAttributedString(nameString)
-            let path = CGPath(rect: nameRect, transform: nil)
-            let frame = CTFramesetterCreateFrame(framesetter, CFRangeMake(0, nameString.length), path, nil)
-            CTFrameDraw(frame, context)
-            
-            currentY -= 35
-        }
-        
-        let contactText = [userDetails.phone, userDetails.email].filter { !$0.isEmpty }.joined(separator: "  •  ")
-        if !contactText.isEmpty {
-            let contactAttrs: [NSAttributedString.Key: Any] = [.font: contactFont, .foregroundColor: accentColor]
-            let contactString = NSAttributedString(string: contactText, attributes: contactAttrs)
-            
-            let contactRect = CGRect(x: margin, y: currentY - 15, width: pageWidth - (2 * margin), height: 20)
-            let framesetter = CTFramesetterCreateWithAttributedString(contactString)
-            let path = CGPath(rect: contactRect, transform: nil)
-            let frame = CTFramesetterCreateFrame(framesetter, CFRangeMake(0, contactString.length), path, nil)
-            CTFrameDraw(frame, context)
-            
-            currentY -= 25
-        }
-        
-        // Separator
-        if separatorStyle == 0 {
-            // Thin Line
-            context.setStrokeColor(NSColor.lightGray.cgColor)
-            context.setLineWidth(1.0)
-            context.move(to: CGPoint(x: margin, y: currentY))
-            context.addLine(to: CGPoint(x: pageWidth - margin, y: currentY))
-            context.strokePath()
-            currentY -= 20
-        } else if separatorStyle == 2 {
-            // Thick Colored Line
-            context.setStrokeColor(nameColor.cgColor)
-            context.setLineWidth(3.0)
-            context.move(to: CGPoint(x: margin, y: currentY))
-            context.addLine(to: CGPoint(x: pageWidth - margin, y: currentY))
-            context.strokePath()
-            currentY -= 25
-        } else {
-            // None (Classic sometimes has none or custom)
-            currentY -= 15
-        }
-        
-        // --- 3. DRAW BODY ---
-        let textRect = CGRect(x: margin, y: margin, width: pageWidth - (2 * margin), height: currentY - margin)
-        
+        // --- PREPARE ATTRIBUTED STRING ---
         let fullAttributedString = NSMutableAttributedString()
         
         let bodyParagraphStyle = NSMutableParagraphStyle()
         bodyParagraphStyle.alignment = .justified
-        bodyParagraphStyle.lineSpacing = 3
-        bodyParagraphStyle.paragraphSpacing = 8
+        bodyParagraphStyle.lineSpacing = 1.25 // Highly compact for single page fit
+        bodyParagraphStyle.paragraphSpacing = 6 // Moderate paragraph spacing
         
         let bodyAttrs: [NSAttributedString.Key: Any] = [
             .font: bodyFont,
@@ -184,14 +123,92 @@ class PDFService {
         
         fullAttributedString.append(NSAttributedString(string: text, attributes: bodyAttrs))
         
+        // --- PAGINATION LOOP ---
         let framesetter = CTFramesetterCreateWithAttributedString(fullAttributedString as CFAttributedString)
+        var currentRange = CFRangeMake(0, 0)
+        var done = false
+        var pageIndex = 0
         
-        let path = CGPath(rect: textRect, transform: nil)
-        let frame = CTFramesetterCreateFrame(framesetter, CFRangeMake(0, fullAttributedString.length), path, nil)
+        while !done {
+            context.beginPDFPage(nil)
+            
+            var currentY = pageHeight - margin
+            
+            // Draw Header ONLY on first page
+            if pageIndex == 0 {
+                // --- DRAW HEADER ---
+                if !userDetails.name.isEmpty {
+                    let nameAttrs: [NSAttributedString.Key: Any] = [.font: nameFont, .foregroundColor: nameColor]
+                    let nameString = NSAttributedString(string: userDetails.name, attributes: nameAttrs)
+                    
+                    let nameRect = CGRect(x: margin, y: currentY - 30, width: pageWidth - (2 * margin), height: 35)
+                    let nameFramesetter = CTFramesetterCreateWithAttributedString(nameString)
+                    let path = CGPath(rect: nameRect, transform: nil)
+                    let frame = CTFramesetterCreateFrame(nameFramesetter, CFRangeMake(0, nameString.length), path, nil)
+                    CTFrameDraw(frame, context)
+                    
+                    currentY -= 35
+                }
+                
+                let contactText = [userDetails.phone, userDetails.email].filter { !$0.isEmpty }.joined(separator: "  •  ")
+                if !contactText.isEmpty {
+                    let contactAttrs: [NSAttributedString.Key: Any] = [.font: contactFont, .foregroundColor: accentColor]
+                    let contactString = NSAttributedString(string: contactText, attributes: contactAttrs)
+                    
+                    let contactRect = CGRect(x: margin, y: currentY - 15, width: pageWidth - (2 * margin), height: 20)
+                    let contactFramesetter = CTFramesetterCreateWithAttributedString(contactString)
+                    let path = CGPath(rect: contactRect, transform: nil)
+                    let frame = CTFramesetterCreateFrame(contactFramesetter, CFRangeMake(0, contactString.length), path, nil)
+                    CTFrameDraw(frame, context)
+                    
+                    currentY -= 25
+                }
+                
+                // Separator
+                if separatorStyle == 0 {
+                    context.setStrokeColor(NSColor.lightGray.cgColor)
+                    context.setLineWidth(1.0)
+                    context.move(to: CGPoint(x: margin, y: currentY))
+                    context.addLine(to: CGPoint(x: pageWidth - margin, y: currentY))
+                    context.strokePath()
+                    currentY -= 20
+                } else if separatorStyle == 2 {
+                    context.setStrokeColor(nameColor.cgColor)
+                    context.setLineWidth(3.0)
+                    context.move(to: CGPoint(x: margin, y: currentY))
+                    context.addLine(to: CGPoint(x: pageWidth - margin, y: currentY))
+                    context.strokePath()
+                    currentY -= 25
+                } else {
+                    currentY -= 15
+                }
+            }
+            
+            // --- DRAW BODY TEXT ---
+            // Calculate available rect being explicit about coordinate system
+            // CoreText / PDF coordinate system: Origin is Bottom-Left.
+            // pageHeight is top.
+            // We draw text from currentY (which is going down from top) down to margin.
+            // Rect origin (bottom-left of rect) is margin. Height is currentY - margin.
+            
+            let textRect = CGRect(x: margin, y: margin, width: pageWidth - (2 * margin), height: currentY - margin)
+            let path = CGPath(rect: textRect, transform: nil)
+            
+            let frame = CTFramesetterCreateFrame(framesetter, currentRange, path, nil)
+            CTFrameDraw(frame, context)
+            
+            // Calculate visible range to advance
+            let visibleRange = CTFrameGetVisibleStringRange(frame)
+            currentRange.location += visibleRange.length
+            
+            if currentRange.location >= fullAttributedString.length {
+                done = true
+            }
+            
+            context.endPDFPage()
+            pageIndex += 1
+        }
         
-        CTFrameDraw(frame, context)
-        
-        context.endPDFPage()
         context.closePDF()
         
         do {

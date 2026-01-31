@@ -174,6 +174,9 @@ class MainViewModel: ObservableObject {
     // MARK: - History State
     @Published var history: [HistoryItem] = []
     @Published var showHistory: Bool = false
+    @Published var currentHistoryItemId: UUID? = nil
+    
+    private var cancellables = Set<AnyCancellable>()
     
     init() {
         // Load Defaults from Custom Suite
@@ -192,6 +195,15 @@ class MainViewModel: ObservableObject {
             
             await loadModels()
         }
+        
+        // Auto-save edits to history
+        $generatedLetter
+            .debounce(for: .seconds(1.0), scheduler: RunLoop.main)
+            .removeDuplicates()
+            .sink { [weak self] newText in
+                self?.updateCurrentHistoryItem(with: newText)
+            }
+            .store(in: &cancellables)
     }
     
     func loadModels() async {
@@ -361,6 +373,7 @@ class MainViewModel: ObservableObject {
                             generatedLetter: finalLetter,
                             toneRawValue: self.selectedTone.rawValue
                         )
+                        self.currentHistoryItemId = newItem.id
                         self.history.insert(newItem, at: 0)
                         HistoryService.save(self.history)
                         
@@ -386,7 +399,20 @@ class MainViewModel: ObservableObject {
         if let tone = LetterTone(rawValue: item.toneRawValue) {
             self.selectedTone = tone
         }
+        self.currentHistoryItemId = item.id
         self.showHistory = false
+    }
+    
+    private func updateCurrentHistoryItem(with text: String) {
+        guard let id = currentHistoryItemId, !text.isEmpty else { return }
+        
+        if let index = history.firstIndex(where: { $0.id == id }) {
+            // Only update if changed
+            if history[index].generatedLetter != text {
+                history[index].generatedLetter = text
+                HistoryService.save(history)
+            }
+        }
     }
     
     func prepareExport() {
