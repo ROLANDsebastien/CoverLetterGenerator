@@ -13,6 +13,8 @@ struct LetterGeneratorApp: App {
     var body: some Scene {
         WindowGroup {
             MainView()
+                .navigationTitle("")
         }
+        .windowToolbarStyle(.unified)
     }
 }

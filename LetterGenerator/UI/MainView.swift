@@ -11,176 +11,202 @@ struct MainView: View {
     @State private var showingSaveProfileAlert: Bool = false
 
     var body: some View {
-        HStack(spacing: 0) {
-            // MARK: - Left Panel (Controls)
-            VStack(spacing: 0) {
-                // Header with History Toggle
-                HeaderView(showHistory: $viewModel.showHistory)
-                    .padding(.bottom, 10)
-                
-                // --- PROFILE SELECTOR ---
-                HStack(spacing: 8) {
-                    Image(systemName: "person.circle")
-                        .foregroundColor(.secondary)
+        ZStack {
+            Color(white: 0.15)
+                .ignoresSafeArea()
+            
+            HStack(spacing: 0) {
+                // MARK: - Left Panel (Controls)
+                VStack(spacing: 0) {
+                    Spacer().frame(height: 50) // Space for traffic lights in unified bar
                     
-                    Picker("", selection: $viewModel.selectedProfile) {
-                        Text(I18n.t("label_load_profile")).tag(nil as UserProfile?)
-                        ForEach(viewModel.profiles) { profile in
-                            Text(profile.profileName).tag(profile as UserProfile?)
-                        }
-                    }
-                    .labelsHidden()
-                    .frame(maxWidth: .infinity)
-                    .onChange(of: viewModel.selectedProfile) { newValue in
-                        if let profile = newValue {
-                            viewModel.loadProfile(profile)
-                        }
-                    }
-                    
-                    // Save Profile Button
-                    Button(action: {
-                        newProfileName = viewModel.selectedProfile?.profileName ?? ""
-                        showingSaveProfileAlert = true
-                    }) {
-                        Image(systemName: "square.and.arrow.down")
-                    }
-                    .buttonStyle(.borderless)
-                    .help(I18n.t("button_save_profile"))
-                }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 15)
-                
-                Divider()
-                
-                ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 25) {
+                    // --- PROFILE SELECTOR ---
+                    HStack(spacing: 8) {
+                        Image(systemName: "person.circle")
+                            .foregroundColor(.secondary)
                         
-                        // 1. Profile & CV Section
-                        VStack(alignment: .leading, spacing: 15) {
-                            SectionHeader(title: I18n.t("section_context"), icon: "person.text.rectangle")
-                            
-                            // Drop Zone
-                            DropZoneView(
-                                fileName: viewModel.cvFileName,
-                                isLoaded: !viewModel.cvText.isEmpty,
-                                isDraggingOver: $isDraggingOver,
-                                onDrop: { providers in
-                                    viewModel.handleDrop(providers: providers) { _, _, _ in }
-                                },
-                                onReview: {
-                                    showingCVReview = true
-                                }
-                            )
-                            
-                            // Personal Details Form (Bound to ViewModel directly now)
-                            VStack(spacing: 12) {
-                                InputField(icon: "person", placeholder: I18n.t("placeholder_full_name"), text: $viewModel.userName)
-                                InputField(icon: "phone", placeholder: I18n.t("placeholder_phone"), text: $viewModel.userPhone)
-                                InputField(icon: "envelope", placeholder: I18n.t("placeholder_email"), text: $viewModel.userEmail)
+                        Picker("", selection: $viewModel.selectedProfile) {
+                            Text(I18n.t("label_load_profile")).tag(nil as UserProfile?)
+                            ForEach(viewModel.profiles) { profile in
+                                Text(profile.profileName).tag(profile as UserProfile?)
                             }
-                            .padding(15)
-                            .background(Color(nsColor: .controlBackgroundColor))
-                            .cornerRadius(10)
-                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.primary.opacity(0.05), lineWidth: 1))
                         }
-
-                        // 2. Job Description Section
-                        VStack(alignment: .leading, spacing: 15) {
-                            SectionHeader(title: I18n.t("section_job_description"), icon: "briefcase")
-                            
-                            TextEditor(text: $viewModel.jobDescription)
-                                .font(.body)
-                                .frame(height: 120)
-                                .padding(8)
-                                .background(Color(nsColor: .controlBackgroundColor))
-                                .cornerRadius(10)
-                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.primary.opacity(0.05), lineWidth: 1))
+                        .labelsHidden()
+                        .frame(maxWidth: .infinity)
+                        .onChange(of: viewModel.selectedProfile) { newValue in
+                            if let profile = newValue {
+                                viewModel.loadProfile(profile)
+                            }
                         }
-
-                        // 3. AI Options & Tone
-                        VStack(alignment: .leading, spacing: 15) {
-                            SectionHeader(title: I18n.t("section_options"), icon: "gearshape.2")
-                            
-                            // Model Picker
-                            Picker(I18n.t("label_ai_model"), selection: $viewModel.selectedModel) {
-                                ForEach(viewModel.availableModels) { model in
-                                    Text(model.displayName).tag(model)
-                                }
-                            }
-                            .pickerStyle(.menu)
-                            .padding(4)
-                            .background(Color(nsColor: .controlBackgroundColor))
-                            .cornerRadius(8)
-                            
-                            // Tone Picker
-                            Picker(I18n.t("label_tone"), selection: $viewModel.selectedTone) {
-                                ForEach(LetterTone.allCases) { tone in
-                                    Text(tone.displayName).tag(tone)
-                                }
-                            }
-                            .pickerStyle(.menu)
-                            .padding(4)
-                            .background(Color(nsColor: .controlBackgroundColor))
-                            .cornerRadius(8)
-                            
-                            // Theme Picker
-                            Picker(I18n.t("label_theme"), selection: $viewModel.selectedTheme) {
-                                ForEach(PDFTheme.allCases) { theme in
-                                    Text(theme.displayName).tag(theme)
-                                }
-                            }
-                            .pickerStyle(.menu)
-                            .padding(4)
-                            .background(Color(nsColor: .controlBackgroundColor))
-                            .cornerRadius(8)
-                            
-                            TextField(I18n.t("placeholder_custom_instructions"), text: $viewModel.customInstructions)
-                                .textFieldStyle(.plain)
-                                .padding(10)
-                                .background(Color(nsColor: .controlBackgroundColor))
-                                .cornerRadius(8)
-                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.05), lineWidth: 1))
+                        
+                        // Save Profile Button
+                        Button(action: {
+                            newProfileName = viewModel.selectedProfile?.profileName ?? ""
+                            showingSaveProfileAlert = true
+                        }) {
+                            Image(systemName: "square.and.arrow.down")
                         }
+                        .buttonStyle(.borderless)
+                        .help(I18n.t("button_save_profile"))
                     }
                     .padding(.horizontal, 20)
-                    .padding(.top, 20)
-                }
-                
-                // Footer: Generate Button (Enhanced Status)
-                Divider()
-                    .padding(.top, 10)
-                
-                GenerateButton(
-                    isGenerating: viewModel.isGenerating,
-                    currentStep: viewModel.currentStep,
-                    isDisabled: viewModel.isGenerating || viewModel.jobDescription.isEmpty || viewModel.cvText.isEmpty,
-                    action: {
-                        viewModel.generateLetter(userName: viewModel.userName, userPhone: viewModel.userPhone, userEmail: viewModel.userEmail)
-                    }
-                )
-                .padding(20)
-            }
-            .frame(width: 380)
-            .background(Color(nsColor: .windowBackgroundColor))
-            .zIndex(1)
+                    .padding(.bottom, 15)
+                    
+                    Divider()
+                    
+                    ScrollView(showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 25) {
+                            
+                            // 1. Profile & CV Section
+                            VStack(alignment: .leading, spacing: 15) {
+                                SectionHeader(title: I18n.t("section_context"), icon: "person.text.rectangle")
+                                
+                                // Drop Zone
+                                DropZoneView(
+                                    fileName: viewModel.cvFileName,
+                                    isLoaded: !viewModel.cvText.isEmpty,
+                                    isDraggingOver: $isDraggingOver,
+                                    onDrop: { providers in
+                                        viewModel.handleDrop(providers: providers) { _, _, _ in }
+                                    },
+                                    onReview: {
+                                        showingCVReview = true
+                                    }
+                                )
+                                
+                                // Personal Details Form (Bound to ViewModel directly now)
+                                VStack(spacing: 12) {
+                                    InputField(icon: "person", placeholder: I18n.t("placeholder_full_name"), text: $viewModel.userName)
+                                    InputField(icon: "phone", placeholder: I18n.t("placeholder_phone"), text: $viewModel.userPhone)
+                                    InputField(icon: "envelope", placeholder: I18n.t("placeholder_email"), text: $viewModel.userEmail)
+                                }
+                                .padding(15)
+                                .background(Color.primary.opacity(0.05))
+                                .cornerRadius(10)
+                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.primary.opacity(0.05), lineWidth: 1))
+                            }
 
-            // MARK: - Right Panel (Preview)
-            ZStack {
-                Color(nsColor: .underPageBackgroundColor)
-                    .ignoresSafeArea()
-                
-                OutputView(
-                    text: $viewModel.generatedLetter,
-                    userName: viewModel.userName,
-                    userPhone: viewModel.userPhone,
-                    userEmail: viewModel.userEmail,
-                    selectedTheme: viewModel.selectedTheme,
-                    onExport: viewModel.prepareExport
-                )
-                .padding(40)
+                            // 2. Job Description Section
+                            VStack(alignment: .leading, spacing: 15) {
+                                SectionHeader(title: I18n.t("section_job_description"), icon: "briefcase")
+                                
+                                TextEditor(text: $viewModel.jobDescription)
+                                    .font(.body)
+                                    .frame(height: 120)
+                                    .padding(8)
+                                    .background(Color.primary.opacity(0.05))
+                                    .cornerRadius(10)
+                                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.primary.opacity(0.05), lineWidth: 1))
+                            }
+
+                            // 3. AI Options & Tone
+                            VStack(alignment: .leading, spacing: 15) {
+                                SectionHeader(title: I18n.t("section_options"), icon: "gearshape.2")
+                                
+                                // Model Picker
+                                Picker(I18n.t("label_ai_model"), selection: $viewModel.selectedModel) {
+                                    ForEach(viewModel.availableModels) { model in
+                                        Text(model.displayName).tag(model)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                                .padding(4)
+                                .background(Color.primary.opacity(0.05))
+                                .cornerRadius(8)
+                                
+                                // Tone Picker
+                                Picker(I18n.t("label_tone"), selection: $viewModel.selectedTone) {
+                                    ForEach(LetterTone.allCases) { tone in
+                                        Text(tone.displayName).tag(tone)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                                .padding(4)
+                                .background(Color.primary.opacity(0.05))
+                                .cornerRadius(8)
+                                
+                                // Theme Picker
+                                Picker(I18n.t("label_theme"), selection: $viewModel.selectedTheme) {
+                                    ForEach(PDFTheme.allCases) { theme in
+                                        Text(theme.displayName).tag(theme)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                                .padding(4)
+                                .background(Color.primary.opacity(0.05))
+                                .cornerRadius(8)
+                                
+                                TextField(I18n.t("placeholder_custom_instructions"), text: $viewModel.customInstructions)
+                                    .textFieldStyle(.plain)
+                                    .padding(10)
+                                    .background(Color.primary.opacity(0.05))
+                                    .cornerRadius(8)
+                                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.05), lineWidth: 1))
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 20)
+                    }
+                    
+                    // Footer: Generate Button (Enhanced Status)
+                    Divider()
+                        .padding(.top, 10)
+                    
+                    GenerateButton(
+                        isGenerating: viewModel.isGenerating,
+                        currentStep: viewModel.currentStep,
+                        isDisabled: viewModel.isGenerating || viewModel.jobDescription.isEmpty || viewModel.cvText.isEmpty,
+                        action: {
+                            viewModel.generateLetter(userName: viewModel.userName, userPhone: viewModel.userPhone, userEmail: viewModel.userEmail)
+                        }
+                    )
+                    .padding(20)
+                }
+                .frame(width: 380)
+                .zIndex(1)
+
+                // MARK: - Right Panel (Preview)
+                ZStack {
+                    OutputView(
+                        text: $viewModel.generatedLetter,
+                        userName: viewModel.userName,
+                        userPhone: viewModel.userPhone,
+                        userEmail: viewModel.userEmail,
+                        selectedTheme: viewModel.selectedTheme,
+                        onExport: viewModel.prepareExport
+                    )
+                    .padding(40)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .frame(minWidth: 900, minHeight: 700)
+        .navigationTitle(I18n.t("app_title"))
+        .toolbar {
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button(action: { viewModel.showHistory = true }) {
+                    Label(I18n.t("history_title"), systemImage: "clock.arrow.circlepath")
+                }
+                .help(I18n.t("history_title"))
+
+                Button(action: {
+                    let pasteboard = NSPasteboard.general
+                    pasteboard.clearContents()
+                    pasteboard.setString(viewModel.generatedLetter, forType: .string)
+                }) {
+                    Label(I18n.t("button_copy"), systemImage: "doc.on.doc")
+                }
+                .disabled(viewModel.generatedLetter.isEmpty)
+                .help(I18n.t("button_copy"))
+
+                Button(action: viewModel.prepareExport) {
+                    Label(I18n.t("button_export_pdf"), systemImage: "square.and.arrow.up")
+                }
+                .disabled(viewModel.generatedLetter.isEmpty)
+                .help(I18n.t("button_export_pdf"))
+            }
+        }
+        .toolbarBackground(.hidden, for: .windowToolbar)
         .fileExporter(
             isPresented: $viewModel.isExporting,
             document: viewModel.documentToExport,
@@ -234,7 +260,7 @@ struct CVReviewSheet: View {
                     .buttonStyle(.borderedProminent)
             }
             .padding()
-            .background(Color(nsColor: .controlBackgroundColor))
+            .background(Color.primary.opacity(0.05))
             
             Divider()
             
@@ -305,23 +331,8 @@ struct DropZoneView: View {
 struct HeaderView: View {
     @Binding var showHistory: Bool 
     var body: some View {
-        HStack {
-            Image(systemName: "doc.text.image.fill")
-                .font(.title2)
-                .foregroundStyle(LinearGradient(colors: [.blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing))
-            Text(I18n.t("app_title"))
-                .font(.system(size: 18, weight: .semibold, design: .rounded))
-            Spacer()
-            Button(action: { showHistory = true }) {
-                Image(systemName: "clock.arrow.circlepath")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.secondary)
-            }
-            .buttonStyle(.plain)
-            .help(I18n.t("history_title"))
-        }
-        .padding(.top, 20)
-        .padding(.horizontal, 20)
+        EmptyView()
+            .padding(.top, 40) // Keep spacing for traffic lights
     }
 }
 
@@ -403,8 +414,9 @@ struct HistoryView: View {
                 Spacer()
                 Button("Fermer") { viewModel.showHistory = false }.buttonStyle(.borderless)
             }
-            .padding().background(Color(nsColor: .controlBackgroundColor))
+            .padding().background(Color.primary.opacity(0.05))
             Divider()
+            
             if viewModel.history.isEmpty {
                 VStack(spacing: 15) {
                     Image(systemName: "clock").font(.system(size: 40)).foregroundColor(.secondary)
@@ -421,7 +433,7 @@ struct HistoryView: View {
                             }
                             Spacer()
                             Button(I18n.t("history_load")) { viewModel.restoreHistoryItem(item) }
-                            .buttonStyle(.borderedProminent).controlSize(.small)
+                                .buttonStyle(.borderedProminent).controlSize(.small)
                         }
                         .padding(.vertical, 4)
                         .contextMenu {
@@ -435,8 +447,10 @@ struct HistoryView: View {
                     .onDelete { indexSet in viewModel.deleteHistoryItem(at: indexSet) }
                 }
                 .listStyle(.inset)
+                .scrollContentBackground(.hidden) // Ensure list doesn't have its own background
             }
         }
+        .background(Color(white: 0.15))
         .frame(width: 400, height: 500)
     }
 }
@@ -492,36 +506,6 @@ struct OutputView: View {
                         .padding(.top, 10)
                         .scrollContentBackground(.hidden)
                         .frame(maxHeight: .infinity)
-                }
-                
-                // Buttons
-                if !text.isEmpty {
-                    HStack(spacing: 8) {
-                        Button(action: {
-                            let pasteboard = NSPasteboard.general
-                            pasteboard.clearContents()
-                            pasteboard.setString(text, forType: .string)
-                        }) {
-                            Image(systemName: "doc.on.doc")
-                                .font(.system(size: 14, weight: .bold))
-                                .padding(8)
-                                .background(Color.blue.opacity(0.1))
-                                .cornerRadius(8)
-                        }
-                        .buttonStyle(.plain)
-                        .help(I18n.t("button_copy"))
-                        
-                        Button(action: onExport) {
-                            Image(systemName: "square.and.arrow.up")
-                                .font(.system(size: 14, weight: .bold))
-                                .padding(8)
-                                .background(Color.blue.opacity(0.1))
-                                .cornerRadius(8)
-                        }
-                        .buttonStyle(.plain)
-                        .help(I18n.t("button_export_pdf"))
-                    }
-                    .padding(16)
                 }
             }
             .frame(maxWidth: 650)
