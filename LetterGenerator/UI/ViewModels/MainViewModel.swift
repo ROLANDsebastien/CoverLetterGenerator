@@ -142,9 +142,16 @@ class MainViewModel: ObservableObject {
     private let defaults = UserDefaults(suiteName: "CoverLetterGenerator")
     
     // Migrated from AppStorage (Now ViewModel Source of Truth for better Profile management)
-    @Published var userName: String = ""
-    @Published var userPhone: String = ""
-    @Published var userEmail: String = ""
+    // Migrated from AppStorage (Now ViewModel Source of Truth for better Profile management)
+    @Published var userName: String = "" {
+        didSet { defaults?.set(userName, forKey: "userName") }
+    }
+    @Published var userPhone: String = "" {
+        didSet { defaults?.set(userPhone, forKey: "userPhone") }
+    }
+    @Published var userEmail: String = "" {
+        didSet { defaults?.set(userEmail, forKey: "userEmail") }
+    }
     
     // NEW: Profile Management
     @Published var profiles: [UserProfile] = []
@@ -179,6 +186,7 @@ class MainViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     
     init() {
+        // Load Defaults from Custom Suite
         // Load Defaults from Custom Suite
         self.userName = defaults?.string(forKey: "userName") ?? ""
         self.userPhone = defaults?.string(forKey: "userPhone") ?? ""
@@ -236,13 +244,18 @@ class MainViewModel: ObservableObject {
         profiles.sort(by: { $0.profileName < $1.profileName })
         ProfileService.save(profiles)
         self.selectedProfile = newProfile
+        
+        // Also persist current state as defaults
+        defaults?.set(self.userName, forKey: "userName")
+        defaults?.set(self.userPhone, forKey: "userPhone")
+        defaults?.set(self.userEmail, forKey: "userEmail")
     }
     
     func loadProfile(_ profile: UserProfile) {
-        self.userName = profile.fullName
-        self.userPhone = profile.phone
-        self.userEmail = profile.email
-        self.customInstructions = profile.customInstructions
+        self.userName = profile.fullName ?? ""
+        self.userPhone = profile.phone ?? ""
+        self.userEmail = profile.email ?? ""
+        self.customInstructions = profile.customInstructions ?? ""
         if let toneRaw = profile.preferredToneRawValue, let tone = LetterTone(rawValue: toneRaw) {
             self.selectedTone = tone
         }
@@ -307,6 +320,7 @@ class MainViewModel: ObservableObject {
         defaults?.set(userPhone, forKey: "userPhone")
         defaults?.set(userEmail, forKey: "userEmail")
         
+        self.generatedLetter = ""
         self.isGenerating = true
         self.currentStep = .analyzing 
         
@@ -352,9 +366,6 @@ class MainViewModel: ObservableObject {
                      self.currentStep = .polishing
                      try? await Task.sleep(nanoseconds: 500_000_000)
                     
-                    self.isGenerating = false
-                    self.currentStep = .idle
-                    
                     switch result {
                     case .success(let output):
                         var finalLetter = output.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -377,7 +388,12 @@ class MainViewModel: ObservableObject {
                         self.history.insert(newItem, at: 0)
                         HistoryService.save(self.history)
                         
+                        self.isGenerating = false
+                        self.currentStep = .idle
+                        
                     case .failure(let error):
+                        self.isGenerating = false
+                        self.currentStep = .idle
                         self.errorMessage = error.localizedDescription
                         self.showError = true
                     }

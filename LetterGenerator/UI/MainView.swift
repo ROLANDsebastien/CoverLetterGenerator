@@ -1,6 +1,25 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
+// MARK: - Visual Effect Wrapper
+struct VisualEffectView: NSViewRepresentable {
+    var material: NSVisualEffectView.Material
+    var blendingMode: NSVisualEffectView.BlendingMode
+    
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = material
+        view.blendingMode = blendingMode
+        view.state = .active
+        return view
+    }
+    
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+        nsView.material = material
+        nsView.blendingMode = blendingMode
+    }
+}
+
 struct MainView: View {
     @StateObject private var viewModel = MainViewModel()
     
@@ -9,53 +28,52 @@ struct MainView: View {
     @State private var showingCVReview: Bool = false
     @State private var newProfileName: String = ""
     @State private var showingSaveProfileAlert: Bool = false
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     var body: some View {
         ZStack {
-            Color(white: 0.15)
+            // Global Window Background (Glassmorphism)
+            VisualEffectView(material: .underWindowBackground, blendingMode: .behindWindow)
                 .ignoresSafeArea()
             
-            HStack(spacing: 0) {
-                // MARK: - Left Panel (Controls)
-                VStack(spacing: 0) {
-                    Spacer().frame(height: 50) // Space for traffic lights in unified bar
-                    
-                    // --- PROFILE SELECTOR ---
-                    HStack(spacing: 8) {
-                        Image(systemName: "person.circle")
-                            .foregroundColor(.secondary)
-                        
-                        Picker("", selection: $viewModel.selectedProfile) {
-                            Text(I18n.t("label_load_profile")).tag(nil as UserProfile?)
-                            ForEach(viewModel.profiles) { profile in
-                                Text(profile.profileName).tag(profile as UserProfile?)
-                            }
-                        }
-                        .labelsHidden()
-                        .frame(maxWidth: .infinity)
-                        .onChange(of: viewModel.selectedProfile) { newValue in
-                            if let profile = newValue {
-                                viewModel.loadProfile(profile)
-                            }
-                        }
-                        
-                        // Save Profile Button
-                        Button(action: {
-                            newProfileName = viewModel.selectedProfile?.profileName ?? ""
-                            showingSaveProfileAlert = true
-                        }) {
-                            Image(systemName: "square.and.arrow.down")
-                        }
-                        .buttonStyle(.borderless)
-                        .help(I18n.t("button_save_profile"))
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 15)
-                    
-                    Divider()
-                    
+            NavigationSplitView(columnVisibility: $columnVisibility) {
+                // MARK: - Sidebar (Controls)
+                ZStack(alignment: .bottom) {
                     ScrollView(showsIndicators: false) {
                         VStack(alignment: .leading, spacing: 25) {
+                            
+                            // --- PROFILE SELECTOR ---
+                            HStack(spacing: 8) {
+                                Image(systemName: "person.circle")
+                                    .foregroundColor(.secondary)
+                                
+                                Picker("", selection: $viewModel.selectedProfile) {
+                                    Text(I18n.t("label_load_profile")).tag(nil as UserProfile?)
+                                    ForEach(viewModel.profiles) { profile in
+                                        Text(profile.profileName).tag(profile as UserProfile?)
+                                    }
+                                }
+                                .labelsHidden()
+                                .frame(maxWidth: .infinity)
+                                .onChange(of: viewModel.selectedProfile) { newValue in
+                                    if let profile = newValue {
+                                        viewModel.loadProfile(profile)
+                                    }
+                                }
+                                
+                                // Save Profile Button
+                                Button(action: {
+                                    newProfileName = viewModel.selectedProfile?.profileName ?? ""
+                                    showingSaveProfileAlert = true
+                                }) {
+                                    Image(systemName: "square.and.arrow.down")
+                                }
+                                .buttonStyle(.borderless)
+                                .help(I18n.t("button_save_profile"))
+                            }
+                            .padding(.top, 20)
+                            
+                            Divider().opacity(0.5)
                             
                             // 1. Profile & CV Section
                             VStack(alignment: .leading, spacing: 15) {
@@ -74,16 +92,15 @@ struct MainView: View {
                                     }
                                 )
                                 
-                                // Personal Details Form (Bound to ViewModel directly now)
+                                // Personal Details Form
                                 VStack(spacing: 12) {
                                     InputField(icon: "person", placeholder: I18n.t("placeholder_full_name"), text: $viewModel.userName)
                                     InputField(icon: "phone", placeholder: I18n.t("placeholder_phone"), text: $viewModel.userPhone)
                                     InputField(icon: "envelope", placeholder: I18n.t("placeholder_email"), text: $viewModel.userEmail)
                                 }
                                 .padding(15)
-                                .background(Color.primary.opacity(0.05))
-                                .cornerRadius(10)
-                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.primary.opacity(0.05), lineWidth: 1))
+                                .background(Color.secondary.opacity(0.05))
+                                .cornerRadius(12)
                             }
 
                             // 2. Job Description Section
@@ -92,81 +109,94 @@ struct MainView: View {
                                 
                                 TextEditor(text: $viewModel.jobDescription)
                                     .font(.body)
-                                    .frame(height: 120)
+                                    .frame(height: 120) // Smaller height for sidebar
                                     .padding(8)
-                                    .background(Color.primary.opacity(0.05))
-                                    .cornerRadius(10)
-                                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.primary.opacity(0.05), lineWidth: 1))
+                                    .background(Color.secondary.opacity(0.05))
+                                    .cornerRadius(12)
+                                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.secondary.opacity(0.1), lineWidth: 0.5))
                             }
 
                             // 3. AI Options & Tone
                             VStack(alignment: .leading, spacing: 15) {
                                 SectionHeader(title: I18n.t("section_options"), icon: "gearshape.2")
                                 
-                                // Model Picker
-                                Picker(I18n.t("label_ai_model"), selection: $viewModel.selectedModel) {
-                                    ForEach(viewModel.availableModels) { model in
-                                        Text(model.displayName).tag(model)
+                                Group {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(I18n.t("label_ai_model")).font(.caption).foregroundColor(.secondary)
+                                        Picker("", selection: $viewModel.selectedModel) {
+                                            ForEach(viewModel.availableModels) { model in
+                                                Text(model.displayName).tag(model)
+                                            }
+                                        }
+                                        .labelsHidden()
+                                    }
+                                    
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(I18n.t("label_tone")).font(.caption).foregroundColor(.secondary)
+                                        Picker("", selection: $viewModel.selectedTone) {
+                                            ForEach(LetterTone.allCases) { tone in
+                                                Text(tone.displayName).tag(tone)
+                                            }
+                                        }
+                                        .labelsHidden()
+                                    }
+                                    
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(I18n.t("label_theme")).font(.caption).foregroundColor(.secondary)
+                                        Picker("", selection: $viewModel.selectedTheme) {
+                                            ForEach(PDFTheme.allCases) { theme in
+                                                Text(theme.displayName).tag(theme)
+                                            }
+                                        }
+                                        .labelsHidden()
                                     }
                                 }
                                 .pickerStyle(.menu)
-                                .padding(4)
-                                .background(Color.primary.opacity(0.05))
-                                .cornerRadius(8)
-                                
-                                // Tone Picker
-                                Picker(I18n.t("label_tone"), selection: $viewModel.selectedTone) {
-                                    ForEach(LetterTone.allCases) { tone in
-                                        Text(tone.displayName).tag(tone)
-                                    }
-                                }
-                                .pickerStyle(.menu)
-                                .padding(4)
-                                .background(Color.primary.opacity(0.05))
-                                .cornerRadius(8)
-                                
-                                // Theme Picker
-                                Picker(I18n.t("label_theme"), selection: $viewModel.selectedTheme) {
-                                    ForEach(PDFTheme.allCases) { theme in
-                                        Text(theme.displayName).tag(theme)
-                                    }
-                                }
-                                .pickerStyle(.menu)
-                                .padding(4)
-                                .background(Color.primary.opacity(0.05))
-                                .cornerRadius(8)
                                 
                                 TextField(I18n.t("placeholder_custom_instructions"), text: $viewModel.customInstructions)
                                     .textFieldStyle(.plain)
                                     .padding(10)
-                                    .background(Color.primary.opacity(0.05))
-                                    .cornerRadius(8)
-                                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.05), lineWidth: 1))
+                                    .background(Color.secondary.opacity(0.05))
+                                    .cornerRadius(10)
                             }
+                            
+                            // Bottom Padding for Button
+                            Spacer().frame(height: 80)
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 20)
+                        .padding(20)
                     }
+                    .scrollContentBackground(.hidden) // Ensure transparency
                     
-                    // Footer: Generate Button (Enhanced Status)
-                    Divider()
-                        .padding(.top, 10)
-                    
-                    GenerateButton(
-                        isGenerating: viewModel.isGenerating,
-                        currentStep: viewModel.currentStep,
-                        isDisabled: viewModel.isGenerating || viewModel.jobDescription.isEmpty || viewModel.cvText.isEmpty,
-                        action: {
-                            viewModel.generateLetter(userName: viewModel.userName, userPhone: viewModel.userPhone, userEmail: viewModel.userEmail)
+                    // Floating Generate Button in Sidebar
+                    VStack {
+                        Spacer()
+                        ZStack {
+                            // Blur background for button area
+                            VisualEffectView(material: .sidebar, blendingMode: .withinWindow)
+                                .frame(height: 80)
+                                .mask(LinearGradient(gradient: Gradient(colors: [.black, .black, .clear]), startPoint: .bottom, endPoint: .top))
+                                .offset(y: 20) // Extend downwards
+                            
+                            GenerateButton(
+                                isGenerating: viewModel.isGenerating,
+                                currentStep: viewModel.currentStep,
+                                isDisabled: viewModel.isGenerating || viewModel.jobDescription.isEmpty || viewModel.cvText.isEmpty,
+                                action: {
+                                    viewModel.generateLetter(userName: viewModel.userName, userPhone: viewModel.userPhone, userEmail: viewModel.userEmail)
+                                }
+                            )
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 20)
                         }
-                    )
-                    .padding(20)
+                    }
                 }
-                .frame(width: 380)
-                .zIndex(1)
-
+                .navigationSplitViewColumnWidth(min: 300, ideal: 350, max: 400)
+                .background(.clear) // Clear sidebar background
+                
+            } detail: {
                 // MARK: - Right Panel (Preview)
                 ZStack {
+                    // Always visible Output View (Paper Preview)
                     OutputView(
                         text: $viewModel.generatedLetter,
                         userName: viewModel.userName,
@@ -176,72 +206,83 @@ struct MainView: View {
                         onExport: viewModel.prepareExport
                     )
                     .padding(40)
+                    .opacity(viewModel.isGenerating ? 0.3 : 1.0)
+                    .animation(.easeInOut, value: viewModel.isGenerating)
+                    
+                    // Loading Overlay
+                    if viewModel.isGenerating {
+                        VStack(spacing: 20) {
+                            ProgressView()
+                                .controlSize(.large)
+                            Text(viewModel.currentStep.rawValue)
+                                .font(.headline)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 10)
+                                .background(.regularMaterial)
+                                .cornerRadius(12)
+                        }
+                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-        }
-        .frame(minWidth: 900, minHeight: 700)
-        .navigationTitle(I18n.t("app_title"))
-        .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
-                Button(action: { viewModel.showHistory = true }) {
-                    Label(I18n.t("history_title"), systemImage: "clock.arrow.circlepath")
-                }
-                .help(I18n.t("history_title"))
+                .background(.clear) // Removed duplicate VisualEffectView setup, using global one
+                .toolbar {
+                    ToolbarItemGroup(placement: .primaryAction) {
+                        Button(action: { viewModel.showHistory = true }) {
+                            Label(I18n.t("history_title"), systemImage: "clock.arrow.circlepath")
+                        }
+                        .help(I18n.t("history_title"))
 
-                Button(action: {
-                    let pasteboard = NSPasteboard.general
-                    pasteboard.clearContents()
-                    pasteboard.setString(viewModel.generatedLetter, forType: .string)
-                }) {
-                    Label(I18n.t("button_copy"), systemImage: "doc.on.doc")
-                }
-                .disabled(viewModel.generatedLetter.isEmpty)
-                .help(I18n.t("button_copy"))
+                        Button(action: {
+                            let pasteboard = NSPasteboard.general
+                            pasteboard.clearContents()
+                            pasteboard.setString(viewModel.generatedLetter, forType: .string)
+                        }) {
+                            Label(I18n.t("button_copy"), systemImage: "doc.on.doc")
+                        }
+                        .disabled(viewModel.generatedLetter.isEmpty)
+                        .help(I18n.t("button_copy"))
 
-                Button(action: viewModel.prepareExport) {
-                    Label(I18n.t("button_export_pdf"), systemImage: "square.and.arrow.up")
-                }
-                .disabled(viewModel.generatedLetter.isEmpty)
-                .help(I18n.t("button_export_pdf"))
-            }
-        }
-        .toolbarBackground(.hidden, for: .windowToolbar)
-        .fileExporter(
-            isPresented: $viewModel.isExporting,
-            document: viewModel.documentToExport,
-            contentType: .pdf,
-            defaultFilename: viewModel.exportFileName
-        ) { result in
-            switch result {
-            case .success(let url):
-                print("Saved to \(url)")
-                viewModel.showingExportSuccess = true
-            case .failure(let error):
-                print("Export failed: \(error.localizedDescription)")
-            }
-        }
-        .alert(I18n.t("alert_export_success_title"), isPresented: $viewModel.showingExportSuccess) {
-            Button(I18n.t("button_ok"), role: .cancel) { }
-        } message: {
-            Text(I18n.t("alert_export_success_message"))
-        }
-        .sheet(isPresented: $showingCVReview) {
-            CVReviewSheet(cvText: $viewModel.cvText)
-        }
-        .sheet(isPresented: $viewModel.showHistory) {
-            HistoryView(viewModel: viewModel)
-        }
-        // SAVE PROFILE ALERT
-        .alert(I18n.t("alert_save_profile_title"), isPresented: $showingSaveProfileAlert, actions: {
-            TextField(I18n.t("placeholder_profile_name"), text: $newProfileName)
-            Button(I18n.t("button_ok")) {
-                if !newProfileName.isEmpty {
-                    viewModel.saveProfile(name: newProfileName)
+                        Button(action: viewModel.prepareExport) {
+                            Label(I18n.t("button_export_pdf"), systemImage: "square.and.arrow.up")
+                        }
+                        .disabled(viewModel.generatedLetter.isEmpty)
+                        .help(I18n.t("button_export_pdf"))
+                    }
                 }
             }
-            Button("Cancel", role: .cancel) { }
-        })
+            .navigationSplitViewStyle(.balanced)
+            .background(.clear) // Ensure split view itself is clear
+            .toolbarBackground(.hidden, for: .windowToolbar) // Hide toolbar background/separator
+            // ALERTS & SHEETS
+            .sheet(isPresented: $showingCVReview) {
+                CVReviewSheet(cvText: $viewModel.cvText)
+            }
+            .sheet(isPresented: $viewModel.showHistory) {
+                HistoryView(viewModel: viewModel)
+            }
+            .fileExporter(
+                isPresented: $viewModel.isExporting,
+                document: viewModel.documentToExport,
+                contentType: .pdf,
+                defaultFilename: viewModel.exportFileName
+            ) { result in
+                switch result {
+                case .success(let url): print("Saved to \(url)"); viewModel.showingExportSuccess = true
+                case .failure(let error): print("Export failed: \(error.localizedDescription)")
+                }
+            }
+            .alert(I18n.t("alert_export_success_title"), isPresented: $viewModel.showingExportSuccess) {
+                Button(I18n.t("button_ok"), role: .cancel) { }
+            } message: { Text(I18n.t("alert_export_success_message")) }
+            .alert(I18n.t("alert_save_profile_title"), isPresented: $showingSaveProfileAlert, actions: {
+                TextField(I18n.t("placeholder_profile_name"), text: $newProfileName)
+                Button(I18n.t("button_ok")) {
+                    if !newProfileName.isEmpty { viewModel.saveProfile(name: newProfileName) }
+                }
+                Button("Cancel", role: .cancel) { }
+            })
+        }
     }
 }
 
@@ -270,6 +311,7 @@ struct CVReviewSheet: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(width: 600, height: 500)
+        .background(VisualEffectView(material: .hudWindow, blendingMode: .withinWindow))
     }
 }
 
@@ -450,8 +492,8 @@ struct HistoryView: View {
                 .scrollContentBackground(.hidden) // Ensure list doesn't have its own background
             }
         }
-        .background(Color(white: 0.15))
-        .frame(width: 400, height: 500)
+        .background(VisualEffectView(material: .hudWindow, blendingMode: .withinWindow))
+        .frame(width: 450, height: 550)
     }
 }
 
@@ -469,9 +511,9 @@ struct OutputView: View {
             // Paper View
             ZStack(alignment: .topTrailing) {
                 // Background
-                RoundedRectangle(cornerRadius: 2)
+                RoundedRectangle(cornerRadius: 12)
                     .fill(Color.white)
-                    .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
+                    .shadow(color: Color.black.opacity(0.12), radius: 20, x: 0, y: 10)
                 
                 // Content
                 VStack(alignment: .leading, spacing: 0) {

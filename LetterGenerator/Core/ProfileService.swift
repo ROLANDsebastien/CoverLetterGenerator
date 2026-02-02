@@ -5,12 +5,12 @@ struct UserProfile: Identifiable, Codable, Hashable {
     var profileName: String // Display name (e.g. "Dev Info", "Manager")
     
     // Personal Details
-    var fullName: String
-    var phone: String
-    var email: String
+    var fullName: String?
+    var phone: String?
+    var email: String?
     
     // Preferences
-    var customInstructions: String
+    var customInstructions: String?
     var preferredToneRawValue: String? // Optional preference
 }
 
