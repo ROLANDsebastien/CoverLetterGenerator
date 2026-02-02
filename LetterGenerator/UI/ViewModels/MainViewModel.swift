@@ -326,15 +326,31 @@ class MainViewModel: ObservableObject {
         
         let recognizer = NLLanguageRecognizer()
         recognizer.processString(jobDescription)
-        let language = recognizer.dominantLanguage?.rawValue ?? "en"
-        self.exportFileName = (language == "fr") ? "Lettre_de_Motivation" : "Cover_Letter"
+        let languageCode = recognizer.dominantLanguage?.rawValue ?? "en"
+        self.exportFileName = (languageCode == "fr") ? "Lettre_de_Motivation" : "Cover_Letter"
         
-        let smartSignatureInstruction = "Write the letter in the SAME language as the Job Description. End with a professional closing (e.g., 'Sincerely,' or 'Cordialement,') matching that language, but DO NOT write the candidate's name or contact details."
+        // Map code to full name for clearer LLM prompting
+        let languageName: String
+        switch languageCode {
+        case "fr": languageName = "French"
+        case "en": languageName = "English"
+        case "de": languageName = "German"
+        case "es": languageName = "Spanish"
+        case "it": languageName = "Italian"
+        case "nl": languageName = "Dutch"
+        default: languageName = "the language of the Job Description"
+        }
+        
+        let languageInstruction = "LANGUAGE REQUIREMENT: You MUST write the cover letter in \(languageName). This is mandatory."
+        
+        let signatureInstruction = "End with a professional closing in \(languageName) (e.g. 'Sincerely,' or 'Cordialement,'), but DO NOT write the candidate's name or contact details."
         
         // Strict length constraint
         let lengthInstruction = "STRICT LENGTH LIMIT: The letter MUST be concise and fit on a single A4 page (approximately 250-300 words). Focus on quality over quantity."
 
         let finalInstructions = """
+        \(languageInstruction)
+        
         TONE: \(selectedTone.promptInstruction)
         
         LENGTH_CONSTRAINT:
@@ -344,7 +360,7 @@ class MainViewModel: ObservableObject {
         \(customInstructions)
         
         IMPORTANT:
-        \(smartSignatureInstruction)
+        \(signatureInstruction)
         """
         
         Task {
